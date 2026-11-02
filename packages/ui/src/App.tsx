@@ -6,11 +6,9 @@ import { Guide } from './screens/Guide';
 import { Home } from './screens/Home';
 import { Mosaic } from './screens/Mosaic';
 import { Player } from './screens/Player';
-import { DEFAULT_THEME, applyTheme } from './theme/themes';
 import './App.css';
 
 export function App() {
-  applyTheme(DEFAULT_THEME);
   const app = createApp();
   const nav = app.nav;
 

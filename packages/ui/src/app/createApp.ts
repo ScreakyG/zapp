@@ -32,6 +32,15 @@ import {
   type NavContext,
   type NavState,
 } from '@zapp/core';
+import { applyTheme } from '../theme/themes';
+import {
+  defaultSecretStore,
+  loadSettings,
+  saveSettings,
+  type SecretStore,
+  type Settings,
+} from './settings';
+import { buildSource } from './sources';
 
 export const BANNER_DURATION = 4000;
 export const MOSAIC_COLUMNS = 4;
@@ -47,8 +56,15 @@ export interface HomeRowView {
   channels: number[];
 }
 
+/** Nothing done yet: on Home, first row, first tile. */
+function isInitial(s: NavState): boolean {
+  return (
+    s.screen === 'home' && s.zone === 'content' && s.home.row === 0 && !s.home.cols.some(Boolean)
+  );
+}
+
 /** A source, optionally with curated home rows (the demo has some). */
-type AppSource = Source & { homeRows?: () => HomeRowSpec[] };
+export type AppSource = Source & { homeRows?: () => HomeRowSpec[] };
 
 const HALF_HOUR = 1_800_000;
 export const GUIDE_SPAN = 4 * HALF_HOUR;
@@ -69,11 +85,39 @@ export interface ZapView {
   error: boolean;
 }
 
+export interface AppOptions {
+  settings?: Settings;
+  secrets?: SecretStore;
+  /** Builds the source from the settings (overridden in tests). */
+  buildSource?: (settings: Settings, secrets: SecretStore) => Promise<AppSource>;
+  /** Persist settings changes (off in tests). */
+  persist?: boolean;
+}
+
 /**
- * App state: the channel list, the navigation state machine wired to the keyboard / remote, the
- * number zapper and the player banner. Screens only read from it.
+ * App state: the settings, the channel list, the navigation state machine wired to the keyboard /
+ * remote, the number zapper and the player banner. Screens only read from it.
  */
-export function createApp(source: AppSource = new DemoSource()) {
+export function createApp(options: AppOptions = {}) {
+  const secrets = options.secrets ?? defaultSecretStore();
+  const [settings, setSettings] = createSignal<Settings>(options.settings ?? loadSettings());
+  const updateSettings = (patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch }));
+  createEffect(
+    on(
+      () => settings().theme,
+      (theme) => applyTheme(theme),
+    ),
+  );
+  if (options.persist ?? true) {
+    createEffect(on(settings, (s) => saveSettings(s), { defer: true }));
+  }
+
+  const makeSource = options.buildSource ?? buildSource;
+  let source: AppSource = new DemoSource();
+  /** Why the configured source could not be loaded, for the settings screen. */
+  const [loadError, setLoadError] = createSignal<string>();
+  const [loading, setLoading] = createSignal(false);
+
   const [channels, setChannels] = createSignal<Channel[]>([]);
   const [homeRows, setHomeRows] = createSignal<HomeRowView[]>([]);
   const [now, setNow] = createSignal(Date.now());
@@ -137,7 +181,11 @@ export function createApp(source: AppSource = new DemoSource()) {
       setNav(result.state);
       for (const effect of result.effects) {
         if (effect.type === 'showBanner') showBanner();
-        if (effect.type === 'tune') setZap({ typed: '', error: false });
+        if (effect.type === 'tune') {
+          setZap({ typed: '', error: false });
+          const id = channels()[effect.channel]?.id;
+          if (id) updateSettings({ lastChannel: id });
+        }
       }
     });
   };
@@ -183,8 +231,34 @@ export function createApp(source: AppSource = new DemoSource()) {
     apply(navigate(nav(), action, ctx()));
   };
 
-  const load = async () => {
-    const list = await source.getChannels();
+  /** Bumped by each reload so a slow, superseded load does not overwrite a newer one. */
+  let generation = 0;
+  let resumed = false;
+
+  /** (Re)builds the source from the settings and loads its channels and programs. */
+  const reload = async () => {
+    const mine = ++generation;
+    batch(() => {
+      setLoading(true);
+      setLoadError(undefined);
+    });
+    try {
+      await load(mine, await makeSource(settings(), secrets));
+    } catch (error) {
+      if (mine !== generation) return;
+      console.error('Loading channels failed', error);
+      setLoadError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (mine === generation) setLoading(false);
+    }
+  };
+
+  const load = async (mine: number, next: AppSource) => {
+    const list = await next.getChannels();
+    if (mine !== generation) return;
+    // Only now that it works: a failed reload keeps the previous source and channels.
+    source = next;
+    const first = !resumed;
     const index = new Map(list.map((c, i) => [c.id, i]));
     const showRows = (specs: HomeRowSpec[]) =>
       setHomeRows(
@@ -197,30 +271,44 @@ export function createApp(source: AppSource = new DemoSource()) {
     // then add "En direct maintenant" once the EPG says what is live.
     // TODO(#15): refresh the live row as programs change, keeping the focus clamped.
     const curated = source.homeRows?.();
+    const favourites = settings().favourites;
     batch(() => {
+      setPrograms(new Map());
       setChannels(list);
-      showRows(curated ?? buildHomeRows(list, () => false));
+      showRows(curated ?? buildHomeRows(list, () => false, favourites));
+      // Indices of the previous list mean nothing in the new one: start over.
+      if (!first) setNav(initialNav(ctx()));
+      // Like a TV: start on the channel watched last, unless the user already moved.
+      const last = list.findIndex((c) => c.id === settings().lastChannel);
+      if (first && last >= 0 && isInitial(nav())) apply(openPlayer(nav(), last));
+      resumed = true;
     });
-    await loadPrograms(list);
-    if (!curated) showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false));
+    await loadPrograms(list, mine);
+    if (mine !== generation) return;
+    if (!curated) {
+      showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false, favourites));
+    }
   };
 
   // A channel whose EPG fails simply shows no program; it must not blank the others.
   let programsUntil = 0;
-  const loadPrograms = async (list: Channel[]) => {
+  const loadPrograms = async (list: Channel[], mine: number) => {
     const from = new Date(Date.now() - PROGRAM_SPAN);
     const to = new Date(Date.now() + PROGRAM_SPAN);
     programsUntil = to.getTime();
+    const epgSource = source;
     const loaded = await Promise.all(
-      list.map((c) => source.getPrograms(c, from, to).catch((): Program[] => [])),
+      list.map((c) => epgSource.getPrograms(c, from, to).catch((): Program[] => [])),
     );
+    // A reload started meanwhile: these programs belong to the previous source.
+    if (mine !== generation) return;
     setPrograms(new Map(list.map((c, i) => [c.id, loaded[i] ?? []])));
   };
 
   // Slide the window before it runs out. TODO(#15): incremental refresh through the EPG cache.
   createEffect(() => {
     if (programsUntil && now() > programsUntil - PROGRAM_SPAN / 2) {
-      void loadPrograms(untrack(channels));
+      void loadPrograms(untrack(channels), generation);
     }
   });
 
@@ -254,9 +342,15 @@ export function createApp(source: AppSource = new DemoSource()) {
     clearTimeout(bannerTimer);
     zapper.cancel();
   });
-  load().catch((error: unknown) => console.error('Loading channels failed', error));
+  void reload();
 
   return {
+    settings,
+    updateSettings,
+    secrets,
+    reload,
+    loading,
+    loadError,
     channels,
     homeRows,
     programs,

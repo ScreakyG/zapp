@@ -1,0 +1,22 @@
+{
+  "name": "zapp",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "scripts": {
+    "dev": "pnpm --filter @zapp/ui dev",
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "eslint": "^9.25.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.31.0",
+    "vitest": "^3.1.0"
+  }
+}

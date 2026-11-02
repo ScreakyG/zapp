@@ -1,44 +1,67 @@
-import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
-import { toAction } from '@zapp/core';
+import { Match, Show, Switch } from 'solid-js';
+import { formatTyped } from '@zapp/core';
 import { Stage } from './Stage';
-import { DEFAULT_THEME, applyTheme, nextTheme, type Theme } from './theme/themes';
+import { createApp } from './app/createApp';
+import { TabBar } from './components/TabBar';
+import { DEFAULT_THEME, applyTheme } from './theme/themes';
 import './App.css';
 
-// Temporary token showcase until the real screens land (#5 onwards).
 export function App() {
-  const [theme, setTheme] = createSignal<Theme>(DEFAULT_THEME);
-
-  createEffect(() => applyTheme(theme()));
-
-  onMount(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const action = toAction(e);
-      if (action === 'left' || action === 'right') {
-        setTheme(nextTheme(theme(), action === 'right' ? 1 : -1));
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    onCleanup(() => window.removeEventListener('keydown', onKey));
-  });
+  applyTheme(DEFAULT_THEME);
+  const app = createApp();
+  const nav = app.nav;
+  const playing = () => app.channels()[nav().player.channel];
 
   return (
     <Stage>
-      <div class="showcase">
-        <p class="caption muted">Thème · ← → pour changer</p>
-        <h1 class="display">{theme()}</h1>
-        <p class="body muted">
-          Une astronome isolée dans un observatoire du désert capte un signal.
-        </p>
-        <div class="row">
-          <span class="pill glass label">Accueil</span>
-          <span class="pill focused label">Guide TV</span>
-          <span class="pill glass label">Mosaïque</span>
-          <span class="live badge">DIRECT</span>
-        </div>
-        <p class="heading">Sport</p>
-        <p class="caption accent">20:45 – 22:10 · reste 38 min</p>
-        <p class="zap-number accent">004</p>
-      </div>
+      <Switch>
+        <Match when={nav().screen === 'home'}>
+          <Placeholder title="Accueil" issue="#7" />
+        </Match>
+        <Match when={nav().screen === 'guide'}>
+          <Placeholder title="Guide TV" issue="#8" />
+        </Match>
+        <Match when={nav().screen === 'mosaic'}>
+          <Placeholder title="Mosaïque" issue="#9" />
+        </Match>
+        <Match when={nav().screen === 'settings'}>
+          <Placeholder title="Paramètres" issue="#18" />
+        </Match>
+        <Match when={nav().screen === 'player'}>
+          {/* Temporary player and banner until #10. */}
+          <div class="player-placeholder">
+            <Show when={app.banner()}>
+              <div class="banner-placeholder">
+                <span class="zap-number accent">
+                  {app.zap().typed ? formatTyped(app.zap().typed) : playing()?.number}
+                </span>
+                <Show
+                  when={!app.zap().error}
+                  fallback={<span class="body live-text">Aucune chaîne à ce numéro</span>}
+                >
+                  <span class="banner-title">{playing()?.name}</span>
+                </Show>
+              </div>
+            </Show>
+          </div>
+        </Match>
+      </Switch>
+      <Show when={nav().screen !== 'player'}>
+        <TabBar
+          screen={nav().screen}
+          focused={nav().zone === 'menu' ? nav().menuIdx : null}
+          now={app.now()}
+        />
+      </Show>
     </Stage>
+  );
+}
+
+function Placeholder(props: { title: string; issue: string }) {
+  return (
+    <div class="placeholder">
+      <h1 class="display">{props.title}</h1>
+      <p class="body muted">Écran à venir ({props.issue}). ↑ pour la barre d'onglets.</p>
+    </div>
   );
 }

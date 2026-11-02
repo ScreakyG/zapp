@@ -16,6 +16,7 @@ Zapp doit tourner sur une TV LG webOS et sur PC, avec la même interface 10 pied
 - **Lecture** : webOS → lecteur natif d'abord, repli hls.js / mpegts.js. PC → hls.js (HLS), mpegts.js (`.ts`), `<video>` natif (MP4). Electron contourne CORS et peut forcer le User-Agent.
 - **Paramètres** : icône engrenage en haut à droite (à côté de l'heure). Sources saisies au clavier virtuel, thème, filtre des groupes, « Recharger ». Pas de QR code en V1.
 - **Mise à l'échelle** : canevas fixe 1280×720 agrandi par CSS `zoom`. Chromium 79 et le Chromium d'Electron ne rapportent pas la géométrie zoomée de la même façon : tout calcul de mise en page (défilement, grille du guide) se fait en unités du canevas, jamais via `getBoundingClientRect` / `offsetTop`.
+- **CSS compatible Chromium 79** : pas de `gap` en flexbox (Chromium 84), pas de `inset` (87), etc. `stylelint-no-unsupported-browser-features` vérifie les feuilles de style en CI (`pnpm lint`).
 - **Persistance** : `localStorage` (thème, favoris, dernière chaîne, identifiants sur TV) ; identifiants chiffrés via `safeStorage` sur Electron ; IndexedDB pour l'EPG.
 - **Organisation** : monorepo pnpm (`packages/core`, `packages/ui`, `apps/webos`, `apps/desktop`).
 - **Tests** : Vitest sur la navigation et les parseurs.

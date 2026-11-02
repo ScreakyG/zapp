@@ -1,0 +1,14 @@
+{
+  "plugins": ["stylelint-no-unsupported-browser-features"],
+  "rules": {
+    "plugin/no-unsupported-browser-features": [
+      true,
+      {
+        "browsers": ["chrome 79"],
+        "ignore": ["css-overflow"],
+        "severity": "error"
+      }
+    ]
+  },
+  "ignoreFiles": ["**/dist/**", "**/node_modules/**", "design/**", "prototype/**"]
+}

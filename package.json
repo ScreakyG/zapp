@@ -7,7 +7,7 @@
     "dev": "pnpm --filter @zapp/ui dev",
     "build": "pnpm -r build",
     "test": "vitest run",
-    "lint": "eslint .",
+    "lint": "eslint . && stylelint \"packages/**/*.css\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck"
@@ -17,6 +17,8 @@
     "@types/node": "^26.6.6",
     "eslint": "^9.25.0",
     "prettier": "^3.5.0",
+    "stylelint": "^17.16.0",
+    "stylelint-no-unsupported-browser-features": "^8.1.2",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.31.0",
     "vitest": "^3.1.0"

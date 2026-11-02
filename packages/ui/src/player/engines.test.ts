@@ -7,6 +7,7 @@ describe('streamFormat', () => {
     expect(streamFormat('http://x/chan/index.M3U8')).toBe('hls');
     expect(streamFormat('http://x/live/user/pass/1234.ts')).toBe('ts');
     expect(streamFormat('http://x/live/user/pass/1234')).toBe('ts');
+    expect(streamFormat('http://x:8080/user/pass/1234')).toBe('ts');
     expect(streamFormat('http://x/movie/user/pass/99.mp4')).toBe('file');
   });
 });

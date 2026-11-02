@@ -1,11 +1,14 @@
 export type StreamFormat = 'hls' | 'ts' | 'file';
 export type EngineName = 'native' | 'hls.js' | 'mpegts.js';
 
-/** HLS by its playlist extension, MPEG-TS by `.ts` or an extension-less Xtream live URL. */
+/**
+ * HLS by its playlist extension; MPEG-TS by `.ts` or an extension-less Xtream live URL
+ * (`/live/user/pass/123`, or `/user/pass/123` on some panels).
+ */
 export function streamFormat(url: string): StreamFormat {
   const path = url.split(/[?#]/)[0]!.toLowerCase();
   if (path.endsWith('.m3u8') || path.endsWith('.m3u')) return 'hls';
-  if (path.endsWith('.ts') || /\/live\/[^/]+\/[^/]+\/[^/.]+$/.test(path)) return 'ts';
+  if (path.endsWith('.ts') || /(?:\/live)?\/[^/]+\/[^/]+\/\d+$/.test(path)) return 'ts';
   return 'file';
 }
 

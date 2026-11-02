@@ -95,6 +95,7 @@ describe('createApp', () => {
     expect(app.programs().has('old')).toBe(false);
     fresh.releasePrograms();
     await reloading;
+    await app.programsLoaded();
     expect(app.onAir(0).program?.title).toBe('new now');
     dispose();
   });
@@ -110,6 +111,36 @@ describe('createApp', () => {
     fresh.releasePrograms();
     await app.reload();
     expect(app.nav()).toMatchObject({ screen: 'home', player: { channel: 0 } });
+    dispose();
+  });
+
+  it('stays on the settings screen across a reload', async () => {
+    const a = controlledSource([channel('a', '001')]);
+    const { app, dispose } = start({}, [a.source]);
+    a.releaseChannels();
+    await flush();
+    for (const key of ['ArrowUp', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'Enter']) {
+      window.dispatchEvent(Object.assign(new Event('keydown'), { key, keyCode: 0 }));
+    }
+    expect(app.nav().screen).toBe('settings');
+    expect(await app.reload()).toBe(true);
+    expect(app.nav().screen).toBe('settings');
+    dispose();
+  });
+
+  it('tries a candidate source without touching the saved settings', async () => {
+    const ok = controlledSource([channel('a', '001')]);
+    const broken: Source = {
+      getChannels: () => Promise.reject(new Error('Playlist injoignable')),
+      getPrograms: async () => [],
+    };
+    const { app, dispose } = start({ groups: ['FR'] }, [ok.source, broken]);
+    ok.releaseChannels();
+    await flush();
+    const candidate = { ...app.settings(), groups: ['BE'] };
+    expect(await app.reload({ settings: candidate, secrets: app.secrets })).toBe(false);
+    expect(app.loadError()).toBe('Playlist injoignable');
+    expect(app.settings().groups).toEqual(['FR']);
     dispose();
   });
 

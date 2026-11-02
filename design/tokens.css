@@ -1,0 +1,107 @@
+/* Zapp — généré depuis tokens.json */
+
+:root, [data-theme="graphite"] {
+  --bg: #0b0b0d;
+  --surface: #1c1c1f;
+  --surface-raised: #2b2b2f;
+  --line: #3a3a3f;
+  --glass: rgba(244, 244, 246, 0.1);
+  --glass-strong: rgba(244, 244, 246, 0.16);
+  --scrim: rgba(32, 32, 36, 0.55);
+  --ink: #f4f4f6;
+  --ink-muted: #a3a3a9;
+  --accent: #f4f4f6;
+  --on-accent: #0b0b0d;
+  --accent-text: #f4f4f6;
+  --live: #ff5a4e;
+  --on-live: #0b0b0d;
+  --shadow-rest: 0 6px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lift: 0 28px 50px rgba(0, 0, 0, 0.6);
+  --shadow-pill: 0 10px 24px rgba(0, 0, 0, 0.45);
+  --shadow-panel: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="phosphore"] {
+  --bg: #0d0e10;
+  --surface: #16181b;
+  --surface-raised: #202329;
+  --line: #2e3238;
+  --glass: rgba(243, 241, 234, 0.1);
+  --glass-strong: rgba(243, 241, 234, 0.16);
+  --scrim: rgba(32, 32, 36, 0.55);
+  --ink: #f3f1ea;
+  --ink-muted: #a3a29b;
+  --accent: #c8f53c;
+  --on-accent: #141518;
+  --accent-text: #c8f53c;
+  --live: #ff5c5c;
+  --on-live: #141518;
+}
+
+[data-theme="ambre"] {
+  --bg: #120e0a;
+  --surface: #1f1a14;
+  --surface-raised: #2c251c;
+  --line: #3d3428;
+  --glass: rgba(247, 239, 227, 0.1);
+  --glass-strong: rgba(247, 239, 227, 0.16);
+  --scrim: rgba(32, 32, 36, 0.55);
+  --ink: #f7efe3;
+  --ink-muted: #b3a796;
+  --accent: #ffb547;
+  --on-accent: #1a1208;
+  --accent-text: #ffb547;
+  --live: #ff5f6d;
+  --on-live: #1a1208;
+}
+
+[data-theme="lagon"] {
+  --bg: #071214;
+  --surface: #0f1f22;
+  --surface-raised: #182d31;
+  --line: #24403f;
+  --glass: rgba(234, 246, 244, 0.1);
+  --glass-strong: rgba(234, 246, 244, 0.16);
+  --scrim: rgba(32, 32, 36, 0.55);
+  --ink: #eaf6f4;
+  --ink-muted: #93aead;
+  --accent: #3ddcc4;
+  --on-accent: #04201b;
+  --accent-text: #3ddcc4;
+  --live: #ff6b57;
+  --on-live: #071214;
+}
+
+:root {
+  --space-xs: 8px;
+  --space-sm: 16px;
+  --space-md: 24px;
+  --space-lg: 32px;
+  --space-safe: 64px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  --focus-scale: 1.09;
+  --focus-lift: -6px;
+  --focus-dim: 0.82;
+  --focus-duration: 240ms;
+  --focus-easing: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --blur-glass: 30px;
+  --blur-panel: 40px;
+  --blur-backdrop: 60px;
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
+}
+
+body { font-family: var(--font-sans); font-variant-numeric: tabular-nums; background: var(--bg); color: var(--ink); }
+
+.display { font-size: 60px; line-height: 64px; font-weight: 800; letter-spacing: -0.035em; }
+.title { font-size: 36px; line-height: 42px; font-weight: 800; letter-spacing: -0.03em; }
+.banner-title { font-size: 28px; line-height: 34px; font-weight: 800; letter-spacing: -0.03em; }
+.heading { font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.zap-number { font-size: 48px; line-height: 52px; font-weight: 800; letter-spacing: -0.03em; }
+.body { font-size: 18px; line-height: 26px; font-weight: 400; }
+.label { font-size: 15px; line-height: 20px; font-weight: 600; }
+.caption { font-size: 13px; line-height: 18px; font-weight: 500; }
+.badge { font-size: 12px; line-height: 18px; font-weight: 700; letter-spacing: 0.06em; }

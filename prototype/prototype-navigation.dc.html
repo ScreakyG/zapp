@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Zapp — navigation TV</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0;background:#000}
+a{color:#f4f4f6}a:hover{color:#ffffff}
+button{font:inherit;cursor:pointer;border:none;margin:0;background:none;padding:0;color:inherit}
+@keyframes zkb{from{transform:scale(1.02) translate(0,0)}to{transform:scale(1.12) translate(-2%,-1%)}}
+@keyframes zfade{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+<div ref="{{setRoot}}" tabIndex="0" onKeyDown="{{onKey}}" onFocus="{{onFocusIn}}" onBlur="{{onFocusOut}}" style="width: 1280px; height: 720px; position: relative; overflow: hidden; background: {{c.bg}}; color: {{c.ink}}; font-family: Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; outline: none;">
+
+  <!-- ACCUEIL : image plein écran de la chaîne sélectionnée -->
+  <sc-if value="{{isHome}}" hint-placeholder-val="{{ true }}">
+    <img src="{{hero.img}}" alt="" style="position: absolute; inset: 0; width: 1280px; height: 720px; object-fit: cover; animation: zfade 400ms ease-out;">
+    <div style="position: absolute; inset: 0; background: linear-gradient(90deg, {{c.bgA92}} 0%, {{c.bgA70}} 32%, {{c.bgA0}} 68%), linear-gradient(0deg, {{c.bg}} 0%, {{c.bgA80}} 38%, {{c.bgA0}} 62%);"></div>
+
+    <div style="position: absolute; top: 132px; left: 64px; width: 600px;">
+      <div style="display: flex; gap: 10px; align-items: center; font-size: 15px; line-height: 20px; font-weight: 600;">
+        <span style="color: {{c.muted}};">{{hero.n}}</span>
+        <span>{{hero.name}}</span>
+        <sc-if value="{{hero.live}}" hint-placeholder-val="{{ false }}">
+          <span style="background: {{c.live}}; color: {{c.onLive}}; font-size: 12px; line-height: 18px; font-weight: 700; letter-spacing: 0.06em; padding: 1px 8px; border-radius: 6px;">DIRECT</span>
+        </sc-if>
+      </div>
+      <h1 style="margin: 12px 0 10px; font-size: 60px; line-height: 64px; font-weight: 800; letter-spacing: -0.035em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{hero.title}}</h1>
+      <div style="font-size: 16px; line-height: 22px; font-weight: 500; color: {{c.muted}};">{{hero.time}} · {{hero.genre}} · <span style="color: {{c.accentText}};">{{hero.left}}</span></div>
+      <p style="margin: 12px 0 0; font-size: 18px; line-height: 26px; color: {{c.ink}}; opacity: 0.92;">{{hero.desc}}</p>
+    </div>
+
+    <div style="position: absolute; top: 420px; left: 0; right: 0; bottom: 0; overflow: hidden;">
+      <div style="transform: translateY({{rowsTy}}px); transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);">
+        <sc-for list="{{rows}}" as="row" hint-placeholder-count="2">
+          <section style="height: 268px; padding: 0 64px; box-sizing: border-box;">
+            <h2 style="margin: 0 0 14px; font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: -0.01em; color: {{row.headColor}};">{{row.title}}</h2>
+            <div style="display: flex; gap: 32px; transform: translateX({{row.tx}}px); transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);">
+              <sc-for list="{{row.tiles}}" as="t" hint-placeholder-count="4">
+                <button tabIndex="-1" onClick="{{t.onClick}}" style="width: 272px; flex: none; text-align: left;">
+                  <div style="position: relative; width: 272px; height: 153px; border-radius: 16px; overflow: hidden; transform: {{t.transform}}; box-shadow: {{t.shadow}}; filter: {{t.filter}}; transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 240ms ease-out, filter 240ms ease-out;">
+                    <img src="{{t.img}}" alt="" style="width: 272px; height: 153px; object-fit: cover; display: block;">
+                    <div style="position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 42%); opacity: {{t.sheen}}; transition: opacity 240ms ease-out;"></div>
+                    <div style="position: absolute; inset: 0; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);"></div>
+                    <sc-if value="{{t.live}}" hint-placeholder-val="{{ false }}">
+                      <span style="position: absolute; top: 10px; left: 10px; background: {{c.live}}; color: {{c.onLive}}; font-size: 12px; line-height: 18px; font-weight: 700; letter-spacing: 0.06em; padding: 1px 8px; border-radius: 6px;">DIRECT</span>
+                    </sc-if>
+                    <div style="position: absolute; left: 12px; right: 12px; bottom: 12px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.28); overflow: hidden;"><div style="height: 100%; width: {{t.pct}}%; background: {{c.accent}};"></div></div>
+                  </div>
+                  <div style="margin-top: {{t.labelGap}}px; transition: margin-top 240ms ease-out;">
+                    <div style="font-size: 15px; line-height: 20px; font-weight: 600; color: {{t.nameColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{t.n}}  {{t.name}}</div>
+                    <div style="font-size: 13px; line-height: 18px; font-weight: 500; color: {{c.muted}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{t.now}}</div>
+                  </div>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- GUIDE TV : fond flouté de la chaîne sélectionnée -->
+  <sc-if value="{{isGuide}}" hint-placeholder-val="{{ false }}">
+    <img src="{{gimg}}" alt="" style="position: absolute; left: -80px; top: -80px; width: 1440px; height: 880px; object-fit: cover; filter: blur(60px) saturate(1.4);">
+    <div style="position: absolute; inset: 0; background: {{c.bgA80}};"></div>
+
+    <div style="position: absolute; top: 112px; left: 64px; right: 64px; height: 96px;">
+      <div style="font-size: 15px; line-height: 20px; font-weight: 600; color: {{c.muted}};">{{detail.line}}</div>
+      <div style="margin: 4px 0; font-size: 36px; line-height: 42px; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{detail.title}}</div>
+      <div style="font-size: 15px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span style="color: {{detail.statusColor}}; font-weight: 600;">{{detail.status}}</span><span style="color: {{c.muted}};"> · {{detail.desc}}</span></div>
+    </div>
+
+    <div style="position: absolute; top: 226px; left: 0; width: 1280px; height: 20px; font-size: 14px; line-height: 20px; font-weight: 600; color: {{c.muted}};">
+      <span style="position: absolute; left: 304px;">20:00</span>
+      <span style="position: absolute; left: 532px;">20:30</span>
+      <span style="position: absolute; left: 760px;">21:00</span>
+      <span style="position: absolute; left: 988px;">21:30</span>
+    </div>
+
+    <div style="position: absolute; top: 250px; left: 64px; right: 0; height: 470px; overflow: hidden;">
+      <div style="padding-top: 6px; transform: translateY({{gridTy}}px); transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);">
+        <sc-for list="{{grows}}" as="gr" hint-placeholder-count="6">
+          <div style="position: relative; height: 64px; margin-bottom: 8px;">
+            <div style="position: absolute; left: 0; top: 0; width: 232px; height: 64px; box-sizing: border-box; padding: 0 12px; background: {{gr.cellBg}}; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+              <img src="{{gr.img}}" alt="" style="width: 56px; height: 40px; border-radius: 8px; object-fit: cover; flex: none;">
+              <div style="min-width: 0;">
+                <div style="font-size: 13px; line-height: 16px; font-weight: 600; color: {{gr.numColor}};">{{gr.n}}</div>
+                <div style="font-size: 15px; line-height: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{gr.name}}</div>
+              </div>
+            </div>
+            <sc-for list="{{gr.progs}}" as="p" hint-placeholder-count="3">
+              <button tabIndex="-1" onClick="{{p.onClick}}" style="position: absolute; top: 0; height: 64px; box-sizing: border-box; padding: 11px 14px; text-align: left; border-radius: 12px; left: {{p.left}}px; width: {{p.w}}px; background: {{p.bg}}; color: {{p.fg}}; transform: {{p.transform}}; box-shadow: {{p.shadow}}; z-index: {{p.z}}; transition: background 200ms ease-out, transform 200ms ease-out;">
+                <span style="display: block; font-size: 15px; line-height: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.t}}</span>
+                <span style="display: block; margin-top: 3px; font-size: 13px; line-height: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; color: {{p.tc}};">{{p.time}}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="position: absolute; left: 698px; top: 248px; width: 2px; height: 472px; background: {{c.live}}; z-index: 3; pointer-events: none;">
+      <div style="position: absolute; top: -4px; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: {{c.live}};"></div>
+    </div>
+  </sc-if>
+
+  <!-- MOSAÏQUE -->
+  <sc-if value="{{isMosaic}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; top: 112px; left: 64px; right: 64px; display: flex; gap: 10px;">
+      <sc-for list="{{chips}}" as="cp" hint-placeholder-count="7">
+        <button tabIndex="-1" onClick="{{cp.onClick}}" style="padding: 9px 18px; border-radius: 999px; font-size: 15px; line-height: 20px; font-weight: 600; display: flex; gap: 8px; align-items: center; background: {{cp.bg}}; color: {{cp.fg}}; transform: {{cp.transform}}; box-shadow: {{cp.shadow}}; transition: background 200ms ease-out, transform 200ms ease-out;">{{cp.label}}<span style="font-size: 13px; font-weight: 600; opacity: 0.75;">{{cp.count}}</span></button>
+      </sc-for>
+    </div>
+
+    <div style="position: absolute; top: 168px; left: 0; right: 0; bottom: 0; overflow: hidden;">
+      <div style="padding: 16px 64px 0; display: grid; grid-template-columns: repeat(4, 272px); column-gap: 32px; row-gap: 28px; transform: translateY({{mosTy}}px); transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);">
+        <sc-for list="{{mtiles}}" as="t" hint-placeholder-count="8">
+          <button tabIndex="-1" onClick="{{t.onClick}}" style="width: 272px; text-align: left;">
+            <div style="position: relative; width: 272px; height: 153px; border-radius: 16px; overflow: hidden; transform: {{t.transform}}; box-shadow: {{t.shadow}}; filter: {{t.filter}}; transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 240ms ease-out, filter 240ms ease-out;">
+              <img src="{{t.img}}" alt="" style="width: 272px; height: 153px; object-fit: cover; display: block;">
+              <div style="position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 42%); opacity: {{t.sheen}};"></div>
+              <div style="position: absolute; inset: 0; border-radius: 16px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);"></div>
+              <sc-if value="{{t.live}}" hint-placeholder-val="{{ false }}">
+                <span style="position: absolute; top: 10px; left: 10px; background: {{c.live}}; color: {{c.onLive}}; font-size: 12px; line-height: 18px; font-weight: 700; letter-spacing: 0.06em; padding: 1px 8px; border-radius: 6px;">DIRECT</span>
+              </sc-if>
+              <div style="position: absolute; left: 12px; right: 12px; bottom: 12px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.28); overflow: hidden;"><div style="height: 100%; width: {{t.pct}}%; background: {{c.accent}};"></div></div>
+            </div>
+            <div style="margin-top: {{t.labelGap}}px; transition: margin-top 240ms ease-out;">
+              <div style="font-size: 15px; line-height: 20px; font-weight: 600; color: {{t.nameColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{t.n}}  {{t.name}}</div>
+              <div style="font-size: 13px; line-height: 18px; font-weight: 500; color: {{c.muted}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{t.now}}</div>
+            </div>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Barre du haut, en verre dépoli -->
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; top: 32px; left: 64px; right: 64px; height: 52px; display: flex; align-items: center; z-index: 5;">
+      <span style="font-size: 24px; font-weight: 800; letter-spacing: -0.04em;">Zapp</span>
+      <nav style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 6px; border-radius: 999px; background: {{c.glass}}; backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);">
+        <sc-for list="{{nav}}" as="item" hint-placeholder-count="3">
+          <button tabIndex="-1" onClick="{{item.onClick}}" style="padding: 8px 22px; border-radius: 999px; font-size: 16px; line-height: 22px; font-weight: 600; background: {{item.bg}}; color: {{item.fg}}; transform: {{item.transform}}; box-shadow: {{item.shadow}}; transition: background 200ms ease-out, transform 200ms ease-out, color 200ms ease-out;">{{item.label}}</button>
+        </sc-for>
+      </nav>
+      <span style="margin-left: auto; font-size: 16px; font-weight: 600; color: {{c.muted}};">20:52</span>
+    </div>
+  </sc-if>
+
+  <!-- LECTEUR -->
+  <sc-if value="{{isPlayer}}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{showBannerFn}}" style="position: absolute; inset: 0; overflow: hidden; background: #000;">
+      <img src="{{pl.img}}" alt="" style="width: 1280px; height: 720px; object-fit: cover; display: block; animation: zkb 24s ease-in-out infinite alternate;">
+    </div>
+    <sc-if value="{{banner}}" hint-placeholder-val="{{ true }}">
+      <div style="position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 45%), linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0) 22%); pointer-events: none; animation: zfade 240ms ease-out;"></div>
+      <div style="position: absolute; top: 32px; left: 64px; right: 64px; display: flex; align-items: center; justify-content: space-between; animation: zfade 240ms ease-out;">
+        <button tabIndex="-1" onClick="{{backFn}}" style="padding: 9px 20px; border-radius: 999px; background: rgba(40, 40, 44, 0.5); backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); color: #f4f4f6; font-size: 15px; line-height: 20px; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);">‹ Retour</button>
+        <span style="padding: 9px 18px; border-radius: 999px; background: rgba(40, 40, 44, 0.5); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); color: #d4d4d8; font-size: 13px; line-height: 18px; font-weight: 500; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);">↑ ↓ changer de chaîne · Entrée infos · 0–9 numéro · ⌫ retour</span>
+      </div>
+      <div style="position: absolute; left: 64px; right: 64px; bottom: 48px; box-sizing: border-box; padding: 20px 24px; border-radius: 24px; background: rgba(32, 32, 36, 0.55); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 24px 60px rgba(0, 0, 0, 0.45); display: flex; gap: 24px; align-items: center; color: #f4f4f6; animation: zfade 240ms ease-out;">
+        <img src="{{pl.img}}" alt="" style="width: 176px; height: 99px; border-radius: 12px; object-fit: cover; flex: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);">
+        <div style="width: 104px; flex: none; font-size: 48px; line-height: 52px; font-weight: 800; letter-spacing: -0.03em; color: {{c.accentText}};">{{pl.zapNum}}</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <span style="font-size: 28px; line-height: 34px; font-weight: 800; letter-spacing: -0.03em;">{{pl.name}}</span>
+            <sc-if value="{{pl.live}}" hint-placeholder-val="{{ false }}">
+              <span style="background: {{c.live}}; color: {{c.onLive}}; font-size: 12px; line-height: 18px; font-weight: 700; letter-spacing: 0.06em; padding: 1px 8px; border-radius: 6px;">DIRECT</span>
+            </sc-if>
+          </div>
+          <sc-if value="{{pl.error}}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top: 2px; font-size: 17px; line-height: 24px; font-weight: 500; color: {{c.live}};">Aucune chaîne à ce numéro</div>
+          </sc-if>
+          <sc-if value="{{pl.noError}}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top: 2px; font-size: 17px; line-height: 24px; font-weight: 500;">{{pl.title}}</div>
+          </sc-if>
+          <div style="margin-top: 10px; display: flex; gap: 14px; align-items: center; font-size: 13px; line-height: 18px; font-weight: 600; color: #d4d4d8;">
+            <span>{{pl.start}}</span>
+            <div style="flex: 1; height: 5px; border-radius: 5px; background: rgba(255, 255, 255, 0.25); overflow: hidden;"><div style="height: 100%; width: {{pl.pct}}%; background: {{c.accent}};"></div></div>
+            <span>{{pl.end}}</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 13px; line-height: 18px; font-weight: 500; color: #d4d4d8;">{{pl.next}}</div>
+        </div>
+      </div>
+    </sc-if>
+  </sc-if>
+
+  <!-- Invitation à prendre le focus -->
+  <sc-if value="{{showHint}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 10; padding: 11px 22px; border-radius: 999px; background: rgba(40, 40, 44, 0.6); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); color: #f4f4f6; font-size: 15px; line-height: 20px; font-weight: 600; white-space: nowrap; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 12px 32px rgba(0, 0, 0, 0.5);">Cliquez sur l'écran, puis naviguez avec les flèches du clavier</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"palette":{"editor":"enum","options":["graphite","phosphore","ambre","lagon"],"default":"graphite","section":"Thème"},"$preview":{"width":1280,"height":720}}'>
+var ZNOW = 52, ZWIN = 120, ZPX = 7.6, ZX0 = 240;
+var ZPAL = {
+  graphite:  { bg: '#0b0b0d', ink: '#f4f4f6', muted: '#a3a3a9', accent: '#f4f4f6', onAccent: '#0b0b0d', accentText: '#f4f4f6', live: '#ff5a4e', onLive: '#0b0b0d' },
+  phosphore: { bg: '#0d0e10', ink: '#f3f1ea', muted: '#a3a29b', accent: '#c8f53c', onAccent: '#141518', accentText: '#c8f53c', live: '#ff5c5c', onLive: '#141518' },
+  ambre:     { bg: '#120e0a', ink: '#f7efe3', muted: '#b3a796', accent: '#ffb547', onAccent: '#1a1208', accentText: '#ffb547', live: '#ff5f6d', onLive: '#1a1208' },
+  lagon:     { bg: '#071214', ink: '#eaf6f4', muted: '#93aead', accent: '#3ddcc4', onAccent: '#04201b', accentText: '#3ddcc4', live: '#ff6b57', onLive: '#071214' }
+};
+function zA(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16 & 255) + ', ' + (n >> 8 & 255) + ', ' + (n & 255) + ', ' + a + ')'; }
+var ZIMG = [
+  '/_blob/95861b10604e0fc38ece82daba195b01', '/_blob/b8ee424e3be7c19efb2eead07a00691e', '/_blob/5e9506621b25ef16ea672a58b26c316d',
+  '/_blob/c490df960500e83c3e55f0190099c3e0', '/_blob/20f93c0185114f0bba6fc4813b6959cc', '/_blob/0b846a8e9bed2231701902c187d9504f',
+  '/_blob/1e2cc1406953e89432ee1e9115eeaaf5', '/_blob/58f6634a5f85016e87d5c9265122a1c7', '/_blob/d2f431c8abd56be8b0b68d2f95998f83',
+  '/_blob/b13bb940c5f2d829050adbeee96bb05f', '/_blob/3d3623382f24497f45845ee7d8c27ca1', '/_blob/f810aa0c35df8d295a2c399952ca3931',
+  '/_blob/d111555c8626ffe8c5079a993d146d20'
+];
+var ZCH = [
+  { n: '001', name: 'Ondes 24', progs: [
+    { t: 'Le 20 h', s: 0, e: 30, g: 'Information', d: 'Les titres de la soirée, en France et dans le monde.' },
+    { t: 'Grand débat', s: 30, e: 75, g: 'Débat', d: 'Quatre invités, une question de société, quarante-cinq minutes pour trancher.', live: true },
+    { t: 'Journal de la nuit', s: 75, e: 120, g: 'Information', d: "Le point sur l'actualité avant minuit." } ] },
+  { n: '002', name: 'Panorama', progs: [
+    { t: 'Mots croisés, le jeu', s: -10, e: 25, g: 'Jeu', d: 'Trois candidats, une grille géante.' },
+    { t: 'Les Voisins — S2 É4', s: 25, e: 80, g: 'Série', d: "Une fuite d'eau au troisième étage met tout l'immeuble en émoi." },
+    { t: 'Les Voisins — S2 É5', s: 80, e: 135, g: 'Série', d: 'La fête des voisins tourne mal.' } ] },
+  { n: '003', name: 'Cinéphare', progs: [
+    { t: 'Court métrage', s: 0, e: 15, g: 'Court métrage', d: 'Un court métrage primé en festival.' },
+    { t: 'La nuit des étoiles', s: 15, e: 105, g: 'Film', d: 'Une astronome isolée dans un observatoire du désert capte un signal que personne ne devait entendre.' },
+    { t: 'Le making-of', s: 105, e: 130, g: 'Coulisses', d: 'Les coulisses du tournage dans le désert.' } ] },
+  { n: '004', name: 'Stade Direct', progs: [
+    { t: 'Avant-match', s: 0, e: 45, g: 'Football', d: 'Compositions, enjeux et pronostics.' },
+    { t: 'Lyon – Nantes', s: 45, e: 150, g: 'Football', d: 'Choc de la 12e journée, en direct du stade.', live: true } ] },
+  { n: '005', name: 'Kiosque Docs', progs: [
+    { t: 'Océans profonds', s: -20, e: 40, g: 'Documentaire', d: 'Plongée à 4 000 mètres.' },
+    { t: 'Les bâtisseurs de ponts', s: 40, e: 100, g: 'Documentaire', d: "Comment on construit un pont de deux kilomètres au-dessus d'un fjord." },
+    { t: 'Volcans', s: 100, e: 160, g: 'Documentaire', d: 'Au bord des cratères actifs.' } ] },
+  { n: '006', name: 'Mistral TV', progs: [
+    { t: 'Météo régionale', s: 0, e: 10, g: 'Météo', d: 'Le temps de demain dans la région.' },
+    { t: 'Marchés de Provence', s: 10, e: 55, g: 'Magazine', d: "Producteurs et recettes d'un marché par semaine." },
+    { t: 'Le grand quiz', s: 55, e: 120, g: 'Jeu', d: 'Les villages de la région s’affrontent.' } ] },
+  { n: '007', name: 'Arcade Jeunesse', progs: [
+    { t: 'Pixel et Bob', s: 0, e: 25, g: 'Dessin animé', d: 'Deux robots apprennent à faire la cuisine.' },
+    { t: 'Les Explorateurs', s: 25, e: 50, g: 'Dessin animé', d: 'Expédition sous la banquise.' },
+    { t: "L'île aux robots", s: 50, e: 140, g: 'Film d’animation', d: 'Échouée sur une île peuplée de machines, une enfant doit réparer le phare pour rentrer.' } ] },
+  { n: '008', name: 'Ciné Nuit', progs: [
+    { t: 'Le dernier train', s: -30, e: 70, g: 'Film', d: 'Un contrôleur et une passagère, une nuit, une gare fermée.' },
+    { t: 'Brouillard', s: 70, e: 180, g: 'Film policier', d: 'Cycle polar : une enquête dans un port noyé de brume.' } ] },
+  { n: '009', name: 'Stade 2', progs: [
+    { t: 'Tennis — quart de finale', s: -60, e: 90, g: 'Tennis', d: 'Masters de fin de saison, troisième set.', live: true },
+    { t: 'Résumé du jour', s: 90, e: 120, g: 'Sport', d: 'Tous les résultats de la journée.' } ] },
+  { n: '010', name: 'Tempo', progs: [
+    { t: 'Concert : orchestre de chambre', s: 0, e: 95, g: 'Musique', d: 'Mozart et Ravel, en direct de la salle.', live: true },
+    { t: 'Sessions acoustiques', s: 95, e: 140, g: 'Musique', d: 'Trois artistes, une guitare, un studio.' } ] },
+  { n: '011', name: 'Mêlée TV', progs: [
+    { t: 'Rugby : Toulouse – Clermont', s: -20, e: 80, g: 'Rugby', d: 'Top 14, deuxième mi-temps, en direct du stade.', live: true },
+    { t: 'Le bord du terrain', s: 80, e: 130, g: 'Magazine', d: "Analyses et interviews d'après-match." } ] },
+  { n: '012', name: 'Circuit 24', progs: [
+    { t: 'Moto : essais libres', s: 0, e: 40, g: 'Sports mécaniques', d: 'Dernière séance avant les qualifications.' },
+    { t: 'Le mag moteurs', s: 40, e: 70, g: 'Magazine', d: 'Essais de voitures et coulisses des paddocks.' },
+    { t: 'Rallye : spéciales de nuit', s: 70, e: 130, g: 'Sports mécaniques', d: 'Les pilotes attaquent les spéciales à la lumière des phares.', live: true } ] },
+  { n: '013', name: 'Arena Basket', progs: [
+    { t: 'Avant-match', s: 0, e: 30, g: 'Basket', d: 'Les clés de la rencontre.' },
+    { t: 'Basket : Paris – Monaco', s: 30, e: 150, g: 'Basket', d: 'Euroligue, en direct de la salle.', live: true } ] }
+];
+var ZROWS = [
+  { title: 'Chaînes favorites', ids: [2, 3, 0, 5, 9] },
+  { title: 'Sport', ids: [3, 8, 10, 12, 11] },
+  { title: 'En direct maintenant', ids: [3, 8, 10, 12, 9, 0] },
+  { title: 'Cinéma et séries', ids: [2, 7, 1, 6] },
+  { title: 'Toutes les chaînes', ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }
+];
+var ZCATS = ['info', 'divert', 'cinema', 'sport', 'info', 'divert', 'jeunesse', 'cinema', 'sport', 'musique', 'sport', 'sport', 'sport'];
+var ZCHIPS = [
+  { label: 'Toutes', key: null }, { label: 'Sport', key: 'sport' }, { label: 'Cinéma', key: 'cinema' },
+  { label: 'Info et docs', key: 'info' }, { label: 'Divertissement', key: 'divert' }, { label: 'Jeunesse', key: 'jeunesse' }, { label: 'Musique', key: 'musique' }
+];
+var ZMCOLS = 4, ZMROW = 237, ZROWH = 268;
+function zMos(f) { var key = ZCHIPS[f].key, out = []; for (var i = 0; i < ZCH.length; i++) { if (!key || ZCATS[i] === key) out.push(i); } return out; }
+function zFmt(m) { var tot = 20 * 60 + m; var h = Math.floor(tot / 60) % 24; var mm = ((tot % 60) + 60) % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; }
+function zVis(ch) { return ch.progs.filter(function (p) { return p.e > 0 && p.s < ZWIN; }); }
+function zNow(ch) { for (var i = 0; i < ch.progs.length; i++) { var p = ch.progs[i]; if (p.s <= ZNOW && ZNOW < p.e) return p; } return ch.progs[0]; }
+function zNext(ch) { var cur = zNow(ch); var i = ch.progs.indexOf(cur); return ch.progs[i + 1] || null; }
+function zPct(p) { return Math.max(0, Math.min(100, Math.round((ZNOW - p.s) / (p.e - p.s) * 100))); }
+function zClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function zSetAt(arr, i, v) { var c = arr.slice(); c[i] = v; return c; }
+function zProgAt(ch, t) {
+  var vp = zVis(ch);
+  for (var i = 0; i < vp.length; i++) { if (vp[i].s <= t && t < vp[i].e) return i; }
+  return t < vp[0].s ? 0 : vp.length - 1;
+}
+function zFocusTime(p) { var a = Math.max(p.s, 0), b = Math.min(p.e, ZWIN); return (p.s <= ZNOW && ZNOW < p.e) ? ZNOW : a + 1 > b ? a : a + 1; }
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      screen: 'home', prevScreen: 'home', zone: 'rows', menuIdx: 0,
+      row: 0, cols: [0, 0, 0, 0, 0], mFilter: 0, mIdx: 0,
+      gRow: 2, gProg: zProgAt(ZCH[2], ZNOW), gTime: ZNOW,
+      ch: 0, banner: false, typed: '', zapError: false, hasFocus: false
+    };
+    this.root = null;
+    this.setRoot = (el) => { this.root = el; };
+    this.onKey = this.onKey.bind(this);
+    this.onFocusIn = () => { if (!this.state.hasFocus) this.setState({ hasFocus: true }); };
+    this.onFocusOut = (e) => { if (this.root && e.relatedTarget && this.root.contains(e.relatedTarget)) return; this.setState({ hasFocus: false }); };
+    this.showBannerFn = () => this.showBanner();
+    this.backFn = () => this.back();
+  }
+  componentWillUnmount() { clearTimeout(this.tBanner); clearTimeout(this.tType); }
+
+  showBanner() {
+    this.setState({ banner: true });
+    clearTimeout(this.tBanner);
+    this.tBanner = setTimeout(() => this.setState({ banner: false, zapError: false }), 4000);
+  }
+  openPlayer(ci, from) {
+    this.setState({ screen: 'player', prevScreen: from, ch: ci, typed: '', zapError: false });
+    this.showBanner();
+  }
+  zap(d) {
+    this.setState((st) => ({ ch: (st.ch + d + ZCH.length) % ZCH.length, typed: '', zapError: false }));
+    this.showBanner();
+  }
+  back() {
+    clearTimeout(this.tBanner); clearTimeout(this.tType);
+    var s = this.state;
+    var patch = { screen: s.prevScreen, banner: false, typed: '', zapError: false, zone: 'rows' };
+    if (s.prevScreen === 'guide') { patch.gRow = s.ch; patch.gProg = zProgAt(ZCH[s.ch], ZNOW); patch.gTime = ZNOW; }
+    this.setState(patch);
+  }
+  goMenu(i) { this.setState({ screen: ['home', 'guide', 'mosaic'][i], zone: 'rows', menuIdx: i }); }
+  typeDigit(d) {
+    var s = this.state;
+    var typed = (s.typed + d).slice(0, 3);
+    var patch = { typed: typed, banner: true, zapError: false };
+    if (s.screen !== 'player') { patch.screen = 'player'; patch.prevScreen = s.screen; }
+    this.setState(patch);
+    clearTimeout(this.tType); clearTimeout(this.tBanner);
+    this.tType = setTimeout(() => this.commit(), typed.length >= 3 ? 250 : 1500);
+  }
+  commit() {
+    var num = parseInt(this.state.typed, 10);
+    var idx = -1;
+    for (var i = 0; i < ZCH.length; i++) { if (parseInt(ZCH[i].n, 10) === num) idx = i; }
+    if (idx >= 0) this.setState({ ch: idx, typed: '' });
+    else this.setState({ typed: '', zapError: true });
+    this.showBanner();
+  }
+
+  onKey(e) {
+    var k = e.key, s = this.state;
+    if (/^[0-9]$/.test(k)) { e.preventDefault(); this.typeDigit(k); return; }
+    var keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Backspace', 'Escape'];
+    if (keys.indexOf(k) < 0) return;
+    e.preventDefault();
+    var ok = k === 'Enter' || k === ' ';
+    var back = k === 'Backspace' || k === 'Escape';
+
+    if (s.screen === 'player') {
+      if (k === 'ArrowUp') this.zap(1);
+      else if (k === 'ArrowDown') this.zap(-1);
+      else if (back) this.back();
+      else this.showBanner();
+      return;
+    }
+    if (s.zone === 'menu') {
+      if (k === 'ArrowLeft') this.setState({ menuIdx: Math.max(0, s.menuIdx - 1) });
+      else if (k === 'ArrowRight') this.setState({ menuIdx: Math.min(2, s.menuIdx + 1) });
+      else if (k === 'ArrowDown') this.setState({ zone: s.screen === 'mosaic' ? 'chips' : 'rows' });
+      else if (ok) this.goMenu(s.menuIdx);
+      else if (back && s.screen !== 'home') this.goMenu(0);
+      return;
+    }
+    if (s.screen === 'mosaic') {
+      var list = zMos(s.mFilter), mi = Math.min(s.mIdx, list.length - 1);
+      if (s.zone === 'chips') {
+        if (k === 'ArrowLeft' || k === 'ArrowRight') this.setState({ mFilter: zClamp(s.mFilter + (k === 'ArrowLeft' ? -1 : 1), 0, ZCHIPS.length - 1), mIdx: 0 });
+        else if (k === 'ArrowUp') this.setState({ zone: 'menu', menuIdx: 2 });
+        else if (k === 'ArrowDown' || ok) this.setState({ zone: 'rows' });
+        else if (back) this.goMenu(0);
+        return;
+      }
+      var mrow = Math.floor(mi / ZMCOLS), mcol = mi % ZMCOLS, lastRow = Math.floor((list.length - 1) / ZMCOLS);
+      if (k === 'ArrowLeft') { if (mcol > 0) this.setState({ mIdx: mi - 1 }); }
+      else if (k === 'ArrowRight') { if (mcol < ZMCOLS - 1 && mi + 1 < list.length) this.setState({ mIdx: mi + 1 }); }
+      else if (k === 'ArrowUp') { if (mrow === 0) this.setState({ zone: 'chips' }); else this.setState({ mIdx: mi - ZMCOLS }); }
+      else if (k === 'ArrowDown') { if (mi + ZMCOLS < list.length) this.setState({ mIdx: mi + ZMCOLS }); else if (mrow < lastRow) this.setState({ mIdx: list.length - 1 }); }
+      else if (ok) this.openPlayer(list[mi], 'mosaic');
+      else if (back) this.goMenu(0);
+      return;
+    }
+    if (s.screen === 'home') {
+      var r = s.row, c = s.cols[r], len = ZROWS[r].ids.length;
+      if (k === 'ArrowLeft') this.setState({ cols: zSetAt(s.cols, r, Math.max(0, c - 1)) });
+      else if (k === 'ArrowRight') this.setState({ cols: zSetAt(s.cols, r, Math.min(len - 1, c + 1)) });
+      else if (k === 'ArrowUp') { if (r > 0) this.setState({ row: r - 1 }); else this.setState({ zone: 'menu', menuIdx: 0 }); }
+      else if (k === 'ArrowDown') this.setState({ row: Math.min(ZROWS.length - 1, r + 1) });
+      else if (ok) this.openPlayer(ZROWS[r].ids[c], 'home');
+      return;
+    }
+    var vp = zVis(ZCH[s.gRow]);
+    if (k === 'ArrowLeft' || k === 'ArrowRight') {
+      var pi = zClamp(s.gProg + (k === 'ArrowLeft' ? -1 : 1), 0, vp.length - 1);
+      this.setState({ gProg: pi, gTime: zFocusTime(vp[pi]) });
+    } else if (k === 'ArrowUp' || k === 'ArrowDown') {
+      var nr = s.gRow + (k === 'ArrowUp' ? -1 : 1);
+      if (nr < 0) { this.setState({ zone: 'menu', menuIdx: 1 }); return; }
+      if (nr >= ZCH.length) return;
+      this.setState({ gRow: nr, gProg: zProgAt(ZCH[nr], s.gTime) });
+    } else if (ok) this.openPlayer(s.gRow, 'guide');
+    else if (back) this.goMenu(0);
+  }
+
+  renderVals() {
+    var s = this.state, self = this;
+    var P = ZPAL[this.props.palette] || ZPAL.graphite;
+    var c = {
+      bg: P.bg, ink: P.ink, muted: P.muted, accent: P.accent, accentText: P.accentText, live: P.live, onLive: P.onLive,
+      bgA0: zA(P.bg, 0), bgA70: zA(P.bg, 0.7), bgA80: zA(P.bg, 0.8), bgA92: zA(P.bg, 0.92),
+      glass: zA(P.ink, 0.1)
+    };
+    var LIFT = 'translateY(-6px) scale(1.09)';
+    var LIFTSH = '0 28px 50px rgba(0, 0, 0, 0.6)';
+    var isHome = s.screen === 'home', isGuide = s.screen === 'guide', isPlayer = s.screen === 'player', isMosaic = s.screen === 'mosaic';
+    var menuFocus = s.zone === 'menu' && !isPlayer;
+
+    function tile(ci, f, onClick) {
+      var ch = ZCH[ci], p = zNow(ch);
+      return {
+        n: ch.n, name: ch.name, img: ZIMG[ci], now: p.t, pct: zPct(p), live: !!p.live,
+        transform: f ? LIFT : 'none', shadow: f ? LIFTSH : '0 6px 16px rgba(0, 0, 0, 0.3)',
+        filter: f ? 'none' : 'brightness(0.82)', sheen: f ? 1 : 0,
+        labelGap: f ? 22 : 12, nameColor: f ? P.ink : P.muted, onClick: onClick
+      };
+    }
+
+    var nav = ['Accueil', 'Guide TV', 'Mosaïque'].map(function (label, i) {
+      var focused = menuFocus && s.menuIdx === i;
+      var active = (i === 0 && isHome) || (i === 1 && isGuide) || (i === 2 && isMosaic);
+      return {
+        label: label,
+        bg: focused ? P.accent : (active ? zA(P.ink, 0.16) : 'transparent'),
+        fg: focused ? P.onAccent : (active ? P.ink : P.muted),
+        transform: focused ? 'scale(1.08)' : 'none', shadow: focused ? '0 10px 24px rgba(0, 0, 0, 0.45)' : 'none',
+        onClick: function () { self.goMenu(i); }
+      };
+    });
+
+    var rows = ZROWS.map(function (r, ri) {
+      var col = s.cols[ri];
+      var rowFocused = !menuFocus && s.row === ri;
+      var tiles = r.ids.map(function (ci, cc) {
+        return tile(ci, rowFocused && col === cc, function () { self.setState({ zone: 'rows', row: ri, cols: zSetAt(self.state.cols, ri, cc) }); self.openPlayer(ci, 'home'); });
+      });
+      return { title: r.title, headColor: rowFocused ? P.ink : P.muted, tx: -Math.max(0, col - 2) * 304, tiles: tiles };
+    });
+
+    var hci = ZROWS[s.row].ids[s.cols[s.row]], hc = ZCH[hci], hp = zNow(hc);
+    var hero = { n: hc.n, name: hc.name, img: ZIMG[hci], live: !!hp.live, title: hp.t, time: zFmt(hp.s) + ' – ' + zFmt(hp.e), genre: hp.g, left: 'reste ' + (hp.e - ZNOW) + ' min', desc: hp.d };
+
+    var off = zClamp(s.gRow - 3, 0, ZCH.length - 6);
+    var grows = ZCH.map(function (ch, ri) {
+      var rowF = !menuFocus && s.gRow === ri;
+      return {
+        n: ch.n, name: ch.name, img: ZIMG[ri], numColor: rowF ? P.accentText : P.muted, cellBg: zA(P.ink, rowF ? 0.14 : 0.08),
+        progs: zVis(ch).map(function (p, pi) {
+          var f = rowF && s.gProg === pi;
+          var isNow = p.s <= ZNOW && ZNOW < p.e;
+          var a = Math.max(p.s, 0), b = Math.min(p.e, ZWIN);
+          return {
+            t: p.t, time: zFmt(p.s) + ' – ' + zFmt(p.e), left: ZX0 + Math.round(a * ZPX), w: Math.round((b - a) * ZPX) - 8,
+            bg: f ? P.accent : zA(P.ink, isNow ? 0.12 : 0.07), fg: f ? P.onAccent : P.ink,
+            tc: f ? P.onAccent : (isNow ? P.accentText : P.muted),
+            transform: f ? 'scale(1.04)' : 'none', shadow: f ? '0 14px 30px rgba(0, 0, 0, 0.5)' : 'none', z: f ? 2 : 1,
+            onClick: function () { self.setState({ gRow: ri, gProg: pi, zone: 'rows' }); self.openPlayer(ri, 'guide'); }
+          };
+        })
+      };
+    });
+    var gch = ZCH[s.gRow], fp = zVis(gch)[s.gProg] || zVis(gch)[0];
+    var fpNow = fp.s <= ZNOW && ZNOW < fp.e;
+    var detail = {
+      line: gch.n + '  ' + gch.name + ' · ' + zFmt(fp.s) + ' – ' + zFmt(fp.e) + ' · ' + fp.g,
+      title: fp.t,
+      status: fpNow ? (fp.live ? 'En direct · reste ' : 'En cours · reste ') + (fp.e - ZNOW) + ' min' : (fp.s > ZNOW ? 'Dans ' + (fp.s - ZNOW) + ' min' : 'Terminé'),
+      statusColor: fpNow ? P.accentText : P.ink,
+      desc: fp.d
+    };
+
+    var mlist = zMos(s.mFilter), mi = Math.min(s.mIdx, mlist.length - 1);
+    var chips = ZCHIPS.map(function (cp, i) {
+      var sel = s.mFilter === i, f = sel && isMosaic && s.zone === 'chips';
+      return {
+        label: cp.label, count: zMos(i).length,
+        bg: f ? P.accent : zA(P.ink, sel ? 0.18 : 0.08), fg: f ? P.onAccent : (sel ? P.ink : P.muted),
+        transform: f ? 'scale(1.08)' : 'none', shadow: f ? '0 10px 24px rgba(0, 0, 0, 0.45)' : 'none',
+        onClick: function () { self.setState({ mFilter: i, mIdx: 0, zone: 'chips' }); }
+      };
+    });
+    var gridF = isMosaic && s.zone === 'rows';
+    var mtiles = mlist.map(function (ci, j) {
+      return tile(ci, gridF && j === mi, function () { self.setState({ mIdx: j, zone: 'rows' }); self.openPlayer(ci, 'mosaic'); });
+    });
+    var mRows = Math.ceil(mlist.length / ZMCOLS);
+    var mOff = zClamp(Math.floor(mi / ZMCOLS) - 1, 0, Math.max(0, mRows - 2));
+
+    var pc = ZCH[s.ch], np = zNow(pc), nx = zNext(pc);
+    var pl = {
+      name: pc.name, img: ZIMG[s.ch], live: !!np.live, title: np.t,
+      zapNum: s.typed ? (s.typed + '_') : pc.n,
+      start: zFmt(np.s), end: zFmt(np.e), pct: zPct(np),
+      next: nx ? 'Ensuite · ' + zFmt(nx.s) + '  ' + nx.t : 'Fin des programmes',
+      error: s.zapError, noError: !s.zapError
+    };
+
+    return {
+      c: c,
+      setRoot: this.setRoot, onKey: this.onKey, onFocusIn: this.onFocusIn, onFocusOut: this.onFocusOut,
+      showBannerFn: this.showBannerFn, backFn: this.backFn,
+      showNav: !isPlayer, isHome: isHome, isGuide: isGuide, isPlayer: isPlayer, isMosaic: isMosaic,
+      nav: nav, rows: rows, rowsTy: -s.row * ZROWH, hero: hero,
+      grows: grows, gridTy: -off * 72, detail: detail, gimg: ZIMG[s.gRow],
+      chips: chips, mtiles: mtiles, mosTy: -mOff * ZMROW,
+      pl: pl, banner: s.banner,
+      showHint: !s.hasFocus
+    };
+  }
+}
+</script>
+</body>
+</html>

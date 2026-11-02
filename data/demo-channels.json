@@ -1,0 +1,463 @@
+{
+  "now": "20:52",
+  "window": {
+    "start": "20:00",
+    "minutes": 120
+  },
+  "categories": [
+    {
+      "id": "sport",
+      "label": "Sport"
+    },
+    {
+      "id": "cinema",
+      "label": "Cinéma"
+    },
+    {
+      "id": "info",
+      "label": "Info et docs"
+    },
+    {
+      "id": "divert",
+      "label": "Divertissement"
+    },
+    {
+      "id": "jeunesse",
+      "label": "Jeunesse"
+    },
+    {
+      "id": "musique",
+      "label": "Musique"
+    }
+  ],
+  "homeRows": [
+    {
+      "title": "Chaînes favorites",
+      "channels": [
+        "003",
+        "004",
+        "001",
+        "006",
+        "010"
+      ]
+    },
+    {
+      "title": "Sport",
+      "channels": [
+        "004",
+        "009",
+        "011",
+        "013",
+        "012"
+      ]
+    },
+    {
+      "title": "En direct maintenant",
+      "channels": [
+        "004",
+        "009",
+        "011",
+        "013",
+        "010",
+        "001"
+      ]
+    },
+    {
+      "title": "Cinéma et séries",
+      "channels": [
+        "003",
+        "008",
+        "002",
+        "007"
+      ]
+    },
+    {
+      "title": "Toutes les chaînes",
+      "channels": [
+        "001",
+        "002",
+        "003",
+        "004",
+        "005",
+        "006",
+        "007",
+        "008",
+        "009",
+        "010",
+        "011",
+        "012",
+        "013"
+      ]
+    }
+  ],
+  "channels": [
+    {
+      "number": "001",
+      "name": "Ondes 24",
+      "category": "info",
+      "image": "assets/illustrations/01-studio.jpg",
+      "programs": [
+        {
+          "title": "Le 20 h",
+          "startMin": 0,
+          "endMin": 30,
+          "genre": "Information",
+          "description": "Les titres de la soirée, en France et dans le monde.",
+          "live": false
+        },
+        {
+          "title": "Grand débat",
+          "startMin": 30,
+          "endMin": 75,
+          "genre": "Débat",
+          "description": "Quatre invités, une question de société, quarante-cinq minutes pour trancher.",
+          "live": true
+        },
+        {
+          "title": "Journal de la nuit",
+          "startMin": 75,
+          "endMin": 120,
+          "genre": "Information",
+          "description": "Le point sur l'actualité avant minuit.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "002",
+      "name": "Panorama",
+      "category": "divert",
+      "image": "assets/illustrations/02-immeuble.jpg",
+      "programs": [
+        {
+          "title": "Mots croisés, le jeu",
+          "startMin": -10,
+          "endMin": 25,
+          "genre": "Jeu",
+          "description": "Trois candidats, une grille géante.",
+          "live": false
+        },
+        {
+          "title": "Les Voisins — S2 É4",
+          "startMin": 25,
+          "endMin": 80,
+          "genre": "Série",
+          "description": "Une fuite d'eau au troisième étage met tout l'immeuble en émoi.",
+          "live": false
+        },
+        {
+          "title": "Les Voisins — S2 É5",
+          "startMin": 80,
+          "endMin": 135,
+          "genre": "Série",
+          "description": "La fête des voisins tourne mal.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "003",
+      "name": "Cinéphare",
+      "category": "cinema",
+      "image": "assets/illustrations/03-desert.jpg",
+      "programs": [
+        {
+          "title": "Court métrage",
+          "startMin": 0,
+          "endMin": 15,
+          "genre": "Court métrage",
+          "description": "Un court métrage primé en festival.",
+          "live": false
+        },
+        {
+          "title": "La nuit des étoiles",
+          "startMin": 15,
+          "endMin": 105,
+          "genre": "Film",
+          "description": "Une astronome isolée dans un observatoire du désert capte un signal que personne ne devait entendre.",
+          "live": false
+        },
+        {
+          "title": "Le making-of",
+          "startMin": 105,
+          "endMin": 130,
+          "genre": "Coulisses",
+          "description": "Les coulisses du tournage dans le désert.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "004",
+      "name": "Stade Direct",
+      "category": "sport",
+      "image": "assets/illustrations/04-foot.jpg",
+      "programs": [
+        {
+          "title": "Avant-match",
+          "startMin": 0,
+          "endMin": 45,
+          "genre": "Football",
+          "description": "Compositions, enjeux et pronostics.",
+          "live": false
+        },
+        {
+          "title": "Lyon – Nantes",
+          "startMin": 45,
+          "endMin": 150,
+          "genre": "Football",
+          "description": "Choc de la 12e journée, en direct du stade.",
+          "live": true
+        }
+      ]
+    },
+    {
+      "number": "005",
+      "name": "Kiosque Docs",
+      "category": "info",
+      "image": "assets/illustrations/05-pont.jpg",
+      "programs": [
+        {
+          "title": "Océans profonds",
+          "startMin": -20,
+          "endMin": 40,
+          "genre": "Documentaire",
+          "description": "Plongée à 4 000 mètres.",
+          "live": false
+        },
+        {
+          "title": "Les bâtisseurs de ponts",
+          "startMin": 40,
+          "endMin": 100,
+          "genre": "Documentaire",
+          "description": "Comment on construit un pont de deux kilomètres au-dessus d'un fjord.",
+          "live": false
+        },
+        {
+          "title": "Volcans",
+          "startMin": 100,
+          "endMin": 160,
+          "genre": "Documentaire",
+          "description": "Au bord des cratères actifs.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "006",
+      "name": "Mistral TV",
+      "category": "divert",
+      "image": "assets/illustrations/06-lavande.jpg",
+      "programs": [
+        {
+          "title": "Météo régionale",
+          "startMin": 0,
+          "endMin": 10,
+          "genre": "Météo",
+          "description": "Le temps de demain dans la région.",
+          "live": false
+        },
+        {
+          "title": "Marchés de Provence",
+          "startMin": 10,
+          "endMin": 55,
+          "genre": "Magazine",
+          "description": "Producteurs et recettes d'un marché par semaine.",
+          "live": false
+        },
+        {
+          "title": "Le grand quiz",
+          "startMin": 55,
+          "endMin": 120,
+          "genre": "Jeu",
+          "description": "Les villages de la région s’affrontent.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "007",
+      "name": "Arcade Jeunesse",
+      "category": "jeunesse",
+      "image": "assets/illustrations/07-robots.jpg",
+      "programs": [
+        {
+          "title": "Pixel et Bob",
+          "startMin": 0,
+          "endMin": 25,
+          "genre": "Dessin animé",
+          "description": "Deux robots apprennent à faire la cuisine.",
+          "live": false
+        },
+        {
+          "title": "Les Explorateurs",
+          "startMin": 25,
+          "endMin": 50,
+          "genre": "Dessin animé",
+          "description": "Expédition sous la banquise.",
+          "live": false
+        },
+        {
+          "title": "L'île aux robots",
+          "startMin": 50,
+          "endMin": 140,
+          "genre": "Film d’animation",
+          "description": "Échouée sur une île peuplée de machines, une enfant doit réparer le phare pour rentrer.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "008",
+      "name": "Ciné Nuit",
+      "category": "cinema",
+      "image": "assets/illustrations/08-gare.jpg",
+      "programs": [
+        {
+          "title": "Le dernier train",
+          "startMin": -30,
+          "endMin": 70,
+          "genre": "Film",
+          "description": "Un contrôleur et une passagère, une nuit, une gare fermée.",
+          "live": false
+        },
+        {
+          "title": "Brouillard",
+          "startMin": 70,
+          "endMin": 180,
+          "genre": "Film policier",
+          "description": "Cycle polar : une enquête dans un port noyé de brume.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "009",
+      "name": "Stade 2",
+      "category": "sport",
+      "image": "assets/illustrations/09-tennis.jpg",
+      "programs": [
+        {
+          "title": "Tennis — quart de finale",
+          "startMin": -60,
+          "endMin": 90,
+          "genre": "Tennis",
+          "description": "Masters de fin de saison, troisième set.",
+          "live": true
+        },
+        {
+          "title": "Résumé du jour",
+          "startMin": 90,
+          "endMin": 120,
+          "genre": "Sport",
+          "description": "Tous les résultats de la journée.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "010",
+      "name": "Tempo",
+      "category": "musique",
+      "image": "assets/illustrations/10-concert.jpg",
+      "programs": [
+        {
+          "title": "Concert : orchestre de chambre",
+          "startMin": 0,
+          "endMin": 95,
+          "genre": "Musique",
+          "description": "Mozart et Ravel, en direct de la salle.",
+          "live": true
+        },
+        {
+          "title": "Sessions acoustiques",
+          "startMin": 95,
+          "endMin": 140,
+          "genre": "Musique",
+          "description": "Trois artistes, une guitare, un studio.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "011",
+      "name": "Mêlée TV",
+      "category": "sport",
+      "image": "assets/illustrations/11-rugby.jpg",
+      "programs": [
+        {
+          "title": "Rugby : Toulouse – Clermont",
+          "startMin": -20,
+          "endMin": 80,
+          "genre": "Rugby",
+          "description": "Top 14, deuxième mi-temps, en direct du stade.",
+          "live": true
+        },
+        {
+          "title": "Le bord du terrain",
+          "startMin": 80,
+          "endMin": 130,
+          "genre": "Magazine",
+          "description": "Analyses et interviews d'après-match.",
+          "live": false
+        }
+      ]
+    },
+    {
+      "number": "012",
+      "name": "Circuit 24",
+      "category": "sport",
+      "image": "assets/illustrations/12-circuit.jpg",
+      "programs": [
+        {
+          "title": "Moto : essais libres",
+          "startMin": 0,
+          "endMin": 40,
+          "genre": "Sports mécaniques",
+          "description": "Dernière séance avant les qualifications.",
+          "live": false
+        },
+        {
+          "title": "Le mag moteurs",
+          "startMin": 40,
+          "endMin": 70,
+          "genre": "Magazine",
+          "description": "Essais de voitures et coulisses des paddocks.",
+          "live": false
+        },
+        {
+          "title": "Rallye : spéciales de nuit",
+          "startMin": 70,
+          "endMin": 130,
+          "genre": "Sports mécaniques",
+          "description": "Les pilotes attaquent les spéciales à la lumière des phares.",
+          "live": true
+        }
+      ]
+    },
+    {
+      "number": "013",
+      "name": "Arena Basket",
+      "category": "sport",
+      "image": "assets/illustrations/13-basket.jpg",
+      "programs": [
+        {
+          "title": "Avant-match",
+          "startMin": 0,
+          "endMin": 30,
+          "genre": "Basket",
+          "description": "Les clés de la rencontre.",
+          "live": false
+        },
+        {
+          "title": "Basket : Paris – Monaco",
+          "startMin": 30,
+          "endMin": 150,
+          "genre": "Basket",
+          "description": "Euroligue, en direct de la salle.",
+          "live": true
+        }
+      ]
+    }
+  ]
+}

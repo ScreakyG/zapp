@@ -6,6 +6,7 @@ import {
   findChannelByNumber,
   initialNav,
   navigate,
+  normalize,
   openPlayer,
   startZapping,
   toAction,
@@ -65,6 +66,8 @@ export function createApp(source = new DemoSource()) {
   }));
 
   const [nav, setNav] = createSignal<NavState>(initialNav(ctx()));
+  /** What screens render: the navigation state with indices clamped to the current content. */
+  const view = createMemo(() => normalize(nav(), ctx()));
 
   let bannerTimer: ReturnType<typeof setTimeout> | undefined;
   const showBanner = () => {
@@ -110,7 +113,10 @@ export function createApp(source = new DemoSource()) {
     const action = toAction(e);
     if (!action) return;
     e.preventDefault();
+    // Holding an arrow keeps moving; holding a digit, OK or Back must not repeat it.
+    if (e.repeat && (typeof action === 'object' || action === 'ok' || action === 'back')) return;
     setNow(Date.now());
+    // TODO(#17/#18): route digits to the focused text field instead of the zapper in settings.
     if (typeof action === 'object') {
       apply(startZapping(nav()));
       zapper.press(action.digit);
@@ -139,16 +145,25 @@ export function createApp(source = new DemoSource()) {
   };
 
   window.addEventListener('keydown', onKey);
-  const clock = setInterval(() => setNow(Date.now()), 15_000);
+  // Tick on minute boundaries so the clock never shows the previous minute.
+  let clock: ReturnType<typeof setInterval> | undefined;
+  const firstTick = setTimeout(
+    () => {
+      setNow(Date.now());
+      clock = setInterval(() => setNow(Date.now()), 60_000);
+    },
+    60_000 - (Date.now() % 60_000),
+  );
   onCleanup(() => {
     window.removeEventListener('keydown', onKey);
+    clearTimeout(firstTick);
     clearInterval(clock);
     clearTimeout(bannerTimer);
     zapper.cancel();
   });
   void load();
 
-  return { channels, homeRows, nav, now, banner, zap, mosaicChannels };
+  return { channels, homeRows, nav: view, now, banner, zap, mosaicChannels };
 }
 
 export type App = ReturnType<typeof createApp>;

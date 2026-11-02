@@ -14,19 +14,25 @@ export function isCategory(value: string): value is Category {
 }
 
 export interface Channel {
-  /** Three-digit display number, also the zapping key: "004". */
+  /**
+   * Stable identity (Xtream `stream_id`, hash of the M3U entry…). Favourites, last channel and
+   * the EPG cache key on it, so it must survive renumbering when the group filter changes.
+   */
+  id: string;
+  /** Three-digit display number, used for zapping only: "004". */
   number: string;
   name: string;
   category: Category;
   image?: string;
   logo?: string;
+  /** Empty when the source has no stream (demo channels). */
   streamUrl: string;
   /** Join key with the EPG (XMLTV `channel id`, Xtream `epg_channel_id`). */
   epgId?: string;
 }
 
 export interface Program {
-  channelNumber: string;
+  channelId: string;
   title: string;
   start: Date;
   end: Date;
@@ -39,6 +45,9 @@ export interface Program {
 /** Where channels and their programs come from: demo data, Xtream Codes, M3U + XMLTV. */
 export interface Source {
   getChannels(): Promise<Channel[]>;
-  /** Programs of one channel overlapping [from, to), sorted by start. */
-  getPrograms(channel: Channel, from: Date, to: Date): Promise<Program[]>;
+  /**
+   * Programs of one channel overlapping [from, to), sorted by start. The guide calls this once
+   * per visible channel; `signal` lets it drop requests for rows scrolled past.
+   */
+  getPrograms(channel: Channel, from: Date, to: Date, signal?: AbortSignal): Promise<Program[]>;
 }

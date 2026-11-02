@@ -6,10 +6,6 @@
   color: var(--accent-text);
 }
 
-.live-text {
-  color: var(--live);
-}
-
 .placeholder {
   position: absolute;
   top: 160px;

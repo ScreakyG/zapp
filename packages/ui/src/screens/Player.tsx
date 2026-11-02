@@ -13,25 +13,38 @@ export function Player(props: { app: App }) {
   const index = () => props.app.nav().player.channel;
   const channel = createMemo(() => props.app.channels()[index()]);
   const air = createMemo(() => props.app.onAir(index()));
+  /** By value: reloading the channel list must not restart the same stream. */
+  const url = createMemo(() => channel()?.streamUrl ?? '');
+  /**
+   * Player opened by the first digit of a number zap: wait for the number instead of starting
+   * the old channel's stream for two seconds.
+   */
+  const holding = () => props.app.zap().typed !== '' && playback.status().state === 'idle';
 
-  // Retune whenever the channel changes; leaving the screen stops playback (onCleanup).
-  createEffect(on(channel, (c) => void playback.play(c?.streamUrl ?? '')));
+  // Retune whenever the stream changes; leaving the screen stops playback (onCleanup).
+  let tuned: string | undefined;
+  createEffect(
+    on([url, holding], ([u, hold]) => {
+      if (hold || u === tuned) return;
+      tuned = u;
+      void playback.play(u);
+    }),
+  );
 
-  const status = () => playback.status();
-  const playing = () => status().state === 'playing';
   /** Demo channels have no stream: their picture stands in for the video. */
-  const noStream = () => !channel()?.streamUrl;
+  const noStream = () => !url();
   const playbackError = () => {
-    const s = status();
+    const s = playback.status();
     return s.state === 'error' && !noStream() ? s.message : undefined;
   };
 
   return (
     <div class="player">
-      <Show when={!playing() && imageUrl(channel()?.image)}>
+      {video}
+      {/* Only for stream-less demo channels: real channels' images are often small logos. */}
+      <Show when={noStream() && imageUrl(channel()?.image)}>
         {(src) => <img class="player-poster" src={src()} alt="" />}
       </Show>
-      {video}
       <Show when={props.app.banner()}>
         <ZapBanner
           channel={channel()}

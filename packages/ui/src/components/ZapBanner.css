@@ -4,6 +4,7 @@
  */
 .zap {
   --video-ink: #f4f4f6;
+  /* Secondary text on the video (the prototype's #d4d4d8, expressed from the same ink). */
   --video-ink-soft: rgba(244, 244, 246, 0.85);
   position: absolute;
   top: 0;
@@ -11,8 +12,17 @@
   bottom: 0;
   left: 0;
   color: var(--video-ink);
-  animation: zap-in var(--focus-duration) ease-out;
   pointer-events: none;
+}
+
+/*
+ * Fade each part, not .zap: an ancestor with opacity < 1 keeps backdrop-filter from seeing the
+ * video, and the blur would pop in at the end of the fade.
+ */
+.zap-shade,
+.zap-top,
+.zap-panel {
+  animation: zap-in var(--focus-duration) ease-out;
 }
 
 @keyframes zap-in {

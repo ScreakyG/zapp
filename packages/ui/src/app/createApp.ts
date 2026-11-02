@@ -16,6 +16,7 @@ import {
   type Source,
   NumberZapper,
   findChannelByNumber,
+  MENU,
   initialNav,
   navigate,
   normalize,
@@ -211,8 +212,9 @@ export function createApp(options: AppOptions = {}) {
   });
 
   /**
-   * A text entry open on screen takes the keys (digits, Back, a physical keyboard) instead of
-   * the navigation and the zapper. Returns true when it handled the key.
+   * A screen or text entry can take the keys (digits, Back, a physical keyboard) before the
+   * navigation and the zapper. The handler returns true when it handled the key; false lets the
+   * key through.
    */
   const captures: ((e: KeyboardEvent) => boolean)[] = [];
   const captureKeys = (handler: (e: KeyboardEvent) => boolean) => {
@@ -226,8 +228,8 @@ export function createApp(options: AppOptions = {}) {
   const onKey = (e: KeyboardEvent) => {
     // The latest entry opened has the keys; closing it gives them back to the previous one.
     const capture = captures[captures.length - 1];
-    if (capture) {
-      if (capture(e)) e.preventDefault();
+    if (capture?.(e)) {
+      e.preventDefault();
       return;
     }
     const action = toAction(e);
@@ -368,6 +370,12 @@ export function createApp(options: AppOptions = {}) {
     secrets,
     reload,
     captureKeys,
+    /** Moves the focus up to the TabBar entry of the current screen (settings: the gear). */
+    focusMenu: () =>
+      apply({
+        state: { ...nav(), zone: 'menu', menuIdx: MENU.indexOf(nav().screen as never) },
+        effects: [],
+      }),
     loading,
     loadError,
     channels,

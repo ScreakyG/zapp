@@ -5,14 +5,3 @@
 .accent {
   color: var(--accent-text);
 }
-
-.placeholder {
-  position: absolute;
-  top: 160px;
-  left: var(--space-safe);
-}
-
-.placeholder h1,
-.placeholder p {
-  margin: 0 0 var(--space-sm);
-}

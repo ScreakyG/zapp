@@ -131,6 +131,16 @@ export function openPlayer(state: NavState, channel: number): NavResult {
   };
 }
 
+/**
+ * First digit of a number zap: show the player (and its banner, where the digits appear) from
+ * any screen, still on the current channel until the number is committed.
+ */
+export function startZapping(state: NavState): NavResult {
+  const next: NavState =
+    state.screen === 'player' ? state : { ...state, screen: 'player', prevScreen: state.screen };
+  return { state: next, effects: [{ type: 'showBanner' }] };
+}
+
 function player(state: NavState, action: Nav, ctx: NavContext): NavResult {
   if ((action === 'up' || action === 'down') && ctx.channelCount > 0) {
     const channel = wrap(state.player.channel + (action === 'up' ? 1 : -1), ctx.channelCount);

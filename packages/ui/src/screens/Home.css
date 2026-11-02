@@ -95,6 +95,7 @@
 /* Tiles are placed by column (see visibleColumns): only those near the focus exist. */
 .home-row-track {
   position: relative;
+  /* Tiles are absolutely placed: reserve their height (153 image + caption). */
   height: 220px;
 }
 

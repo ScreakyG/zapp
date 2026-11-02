@@ -6,6 +6,7 @@ import { ChannelTileOf } from '../components/ChannelTileOf';
 import { LiveBadge } from '../components/LiveBadge';
 import { formatTime } from '../format';
 import { imageUrl } from '../images';
+import { visibleColumns } from './window';
 import './Home.css';
 
 /** Row pitch and tile pitch (272 + space-lg), in stage pixels. */
@@ -13,16 +14,6 @@ const ROW_HEIGHT = 268;
 const TILE_PITCH = 304;
 /** The focused tile stays in place up to this column, then the row scrolls under it. */
 const SCROLL_FROM_COL = 2;
-/** Tiles kept in the DOM around the focus: a row of thousands of channels stays light (#33). */
-const BEFORE = SCROLL_FROM_COL + 1;
-const AFTER = 6;
-
-/** Columns rendered for a row: the ones on screen, plus one on each side for the scroll. */
-export function visibleColumns(length: number, col: number): number[] {
-  const first = Math.max(0, col - BEFORE);
-  const last = Math.min(length, col + AFTER);
-  return Array.from({ length: Math.max(0, last - first) }, (_, i) => first + i);
-}
 
 /** Home (HANDOFF §4): the focused channel fills the screen, rows of tiles at the bottom. */
 export function Home(props: { app: App }) {

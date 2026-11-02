@@ -3,3 +3,4 @@ export * from './model';
 export * from './epg';
 export * from './demo';
 export * from './nav';
+export * from './zap';

@@ -255,27 +255,39 @@ export function createApp(options: AppOptions = {}) {
   let generation = 0;
   let resumed = false;
 
-  /** (Re)builds the source from the settings and loads its channels and programs. */
-  const reload = async () => {
+  /**
+   * (Re)builds the source and loads its channels; programs follow in the background. With a
+   * candidate (settings screen), the source it describes is tried without saving anything: the
+   * caller saves only on success. Resolves to whether channels were loaded.
+   */
+  const reload = async (candidate?: { settings: Settings; secrets: SecretStore }) => {
     const mine = ++generation;
     batch(() => {
       setLoading(true);
       setLoadError(undefined);
     });
     try {
-      await load(mine, await makeSource(settings(), secrets));
+      const next = await makeSource(
+        candidate?.settings ?? settings(),
+        candidate?.secrets ?? secrets,
+      );
+      return await load(mine, next);
     } catch (error) {
-      if (mine !== generation) return;
+      if (mine !== generation) return false;
       console.error('Loading channels failed', error);
       setLoadError(error instanceof Error ? error.message : String(error));
+      return false;
     } finally {
       if (mine === generation) setLoading(false);
     }
   };
 
-  const load = async (mine: number, next: AppSource) => {
+  /** Settles when the programs of the current load are in (tests, background work). */
+  let programsLoaded: Promise<void> = Promise.resolve();
+
+  const load = async (mine: number, next: AppSource): Promise<boolean> => {
     const list = await next.getChannels();
-    if (mine !== generation) return;
+    if (mine !== generation) return false;
     // Only now that it works: a failed reload keeps the previous source and channels.
     source = next;
     const first = !resumed;
@@ -296,18 +308,33 @@ export function createApp(options: AppOptions = {}) {
       setPrograms(new Map());
       setChannels(list);
       showRows(curated ?? buildHomeRows(list, () => false, favourites));
-      // Indices of the previous list mean nothing in the new one: start over.
-      if (!first) setNav(initialNav(ctx()));
+      // Indices of the previous list mean nothing in the new one: start over, but stay on the
+      // settings screen when the reload comes from there.
+      if (!first) {
+        const s = nav();
+        const fresh = initialNav(ctx());
+        setNav(
+          s.screen === 'settings'
+            ? {
+                ...fresh,
+                screen: 'settings',
+                zone: s.zone,
+                menuIdx: s.menuIdx,
+                settingsReturn: 'home',
+              }
+            : fresh,
+        );
+      }
       // Like a TV: start on the channel watched last, unless the user already moved.
       const last = list.findIndex((c) => c.id === settings().lastChannel);
       if (first && last >= 0 && isInitial(nav())) apply(openPlayer(nav(), last));
       resumed = true;
     });
-    await loadPrograms(list, mine);
-    if (mine !== generation) return;
-    if (!curated) {
+    programsLoaded = loadPrograms(list, mine).then(() => {
+      if (mine !== generation || curated) return;
       showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false, favourites));
-    }
+    });
+    return true;
   };
 
   // A channel whose EPG fails simply shows no program; it must not blank the others.
@@ -369,6 +396,7 @@ export function createApp(options: AppOptions = {}) {
     updateSettings,
     secrets,
     reload,
+    programsLoaded: () => programsLoaded,
     captureKeys,
     /** Moves the focus up to the TabBar entry of the current screen (settings: the gear). */
     focusMenu: () =>

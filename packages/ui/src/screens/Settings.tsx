@@ -56,8 +56,9 @@ export function Settings(props: { app: App }) {
     epgUrl: source?.kind === 'm3u' ? (source.epgUrl ?? '') : '',
     groups: settings().groups.join(', '),
   });
+  // Prefill the saved password, unless one was typed meanwhile.
   void props.app.secrets.get(XTREAM_SECRET).then((password) => {
-    if (password) setDraft((d) => ({ ...d, password }));
+    if (password) setDraft((d) => (d.password ? d : { ...d, password }));
   });
 
   const [focus, setFocus] = createSignal(0);
@@ -137,6 +138,8 @@ export function Settings(props: { app: App }) {
         if (row?.kind === 'choice') change(row.id, action === 'left' ? -1 : 1);
         return true;
       case 'ok':
+        // One save at a time: a held or repeated OK must not start several.
+        if (busy() || e.repeat) return true;
         if (row?.kind === 'field') setEditing(row);
         if (row?.kind === 'choice') change(row.id, 1);
         if (row?.kind === 'button') void (row.id === 'save' ? save() : reload());
@@ -157,38 +160,55 @@ export function Settings(props: { app: App }) {
 
   const save = async () => {
     const d = draft();
+    const trimmed = {
+      server: d.server.trim(),
+      username: d.username.trim(),
+      playlistUrl: d.playlistUrl.trim(),
+    };
     const groups = d.groups
       .split(',')
       .map((g) => g.trim())
       .filter(Boolean);
     let config: SourceConfig | undefined;
     if (d.kind === 'xtream') {
-      if (!d.server || !d.username) return fail('Indique le serveur et l’utilisateur');
-      config = { kind: 'xtream', server: d.server.trim(), username: d.username.trim() };
+      if (!trimmed.server || !trimmed.username) return fail('Indique le serveur et l’utilisateur');
+      config = { kind: 'xtream', server: trimmed.server, username: trimmed.username };
     } else if (d.kind === 'm3u') {
-      if (!d.playlistUrl) return fail('Indique l’adresse de la playlist');
+      if (!trimmed.playlistUrl) return fail('Indique l’adresse de la playlist');
       config = {
         kind: 'm3u',
-        playlistUrl: d.playlistUrl.trim(),
+        playlistUrl: trimmed.playlistUrl,
         epgUrl: d.epgUrl.trim() || undefined,
       };
     }
     setBusy(true);
     setMessage({ text: 'Connexion…', error: false });
     try {
+      let account = '';
       if (config?.kind === 'xtream') {
-        const account = await new XtreamSource({ ...config, password: d.password }).account();
-        const until = account.expires
-          ? ` · jusqu’au ${account.expires.toLocaleDateString('fr-FR')}`
-          : '';
-        setMessage({ text: `Compte actif${until}`, error: false });
+        const info = await new XtreamSource({ ...config, password: d.password }).account();
+        account = info.expires ? ` · jusqu’au ${info.expires.toLocaleDateString('fr-FR')}` : '';
+      }
+      // Try the new source first; nothing is saved unless its channels load.
+      const candidate = { ...settings(), source: config, groups };
+      const draftSecrets = {
+        get: async () => (d.kind === 'xtream' ? d.password : undefined),
+        set: async () => {},
+      };
+      if (!(await props.app.reload({ settings: candidate, secrets: draftSecrets }))) {
+        return fail(props.app.loadError() ?? 'Chargement impossible');
       }
       await props.app.secrets.set(XTREAM_SECRET, d.kind === 'xtream' ? d.password : undefined);
-      props.app.updateSettings({ source: config, groups, lastChannel: undefined });
-      await props.app.reload();
-      const error = props.app.loadError();
-      if (error) return fail(error);
-      setMessage({ text: `Enregistré · ${props.app.channels().length} chaînes`, error: false });
+      const sameSource = JSON.stringify(config) === JSON.stringify(settings().source);
+      props.app.updateSettings({
+        source: config,
+        groups,
+        ...(sameSource ? {} : { lastChannel: undefined }),
+      });
+      setMessage({
+        text: `Enregistré · ${props.app.channels().length} chaînes${account}`,
+        error: false,
+      });
     } catch (error) {
       fail(error instanceof XtreamError || error instanceof Error ? error.message : String(error));
     } finally {
@@ -199,13 +219,12 @@ export function Settings(props: { app: App }) {
   const reload = async () => {
     setBusy(true);
     setMessage({ text: 'Chargement…', error: false });
-    await props.app.reload();
+    const ok = await props.app.reload();
     setBusy(false);
-    const error = props.app.loadError();
     setMessage(
-      error
-        ? { text: error, error: true }
-        : { text: `${props.app.channels().length} chaînes chargées`, error: false },
+      ok
+        ? { text: `${props.app.channels().length} chaînes chargées`, error: false }
+        : { text: props.app.loadError() ?? 'Chargement impossible', error: true },
     );
   };
 

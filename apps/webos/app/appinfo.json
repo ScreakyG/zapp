@@ -1,0 +1,14 @@
+{
+  "id": "dev.zapp.tv",
+  "version": "0.1.0",
+  "vendor": "Zapp",
+  "type": "web",
+  "main": "index.html",
+  "title": "Zapp",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "iconColor": "#0b0b0d",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "requiredACG": []
+}

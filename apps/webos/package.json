@@ -1,0 +1,17 @@
+{
+  "name": "@zapp/webos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zapp pour LG webOS",
+  "scripts": {
+    "stage": "pnpm --filter @zapp/ui build:webos && node scripts/stage.cjs",
+    "package": "pnpm run stage && ares-package build --outdir out",
+    "install-tv": "node scripts/ares.cjs install",
+    "launch-tv": "node scripts/ares.cjs launch",
+    "inspect-tv": "node scripts/ares.cjs inspect",
+    "deploy-tv": "pnpm run package && pnpm run install-tv && pnpm run launch-tv"
+  },
+  "devDependencies": {
+    "@webos-tools/cli": "^3.2.6"
+  }
+}

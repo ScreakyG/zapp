@@ -6,3 +6,6 @@ allowBuilds:
   esbuild: true
   electron: true
   electron-winstaller: false
+  '@webos-tools/cli': false
+  cpu-features: false
+  ssh2: false

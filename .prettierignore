@@ -3,3 +3,6 @@ design/
 data/
 pnpm-lock.yaml
 *.md
+dist-webos/
+apps/webos/build/
+apps/webos/out/

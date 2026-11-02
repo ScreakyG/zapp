@@ -13,6 +13,9 @@ export default tseslint.config(
     ignores: [
       '**/dist/**',
       '**/release/**',
+      '**/dist-webos/**',
+      'apps/webos/build/**',
+      'apps/webos/out/**',
       '**/node_modules/**',
       '**/.vite/**',
       'prototype/**',
@@ -22,8 +25,8 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    // Electron main and preload scripts: plain CommonJS on Node.
-    files: ['apps/desktop/**/*.cjs'],
+    // Node scripts (Electron main and preload, webOS packaging): plain CommonJS.
+    files: ['apps/**/*.cjs'],
     languageOptions: { sourceType: 'commonjs', globals: nodeGlobals },
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },

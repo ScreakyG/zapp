@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "build:webos": "vite build --mode webos"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

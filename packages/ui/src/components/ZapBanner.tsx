@@ -16,6 +16,8 @@ export interface ZapBannerProps {
   zapError: boolean;
   /** Playback problem to show instead of the program title. */
   playbackError?: string;
+  /** Click on "‹ Retour" (PC). */
+  onBack?: () => void;
 }
 
 /** The glass panel over the video after each zap (design/components/ZapBanner.md). */
@@ -24,7 +26,16 @@ export function ZapBanner(props: ZapBannerProps) {
     <div class="zap">
       <div class="zap-shade" />
       <div class="zap-top">
-        <span class="zap-pill label">‹ Retour</span>
+        <span
+          class="zap-pill label"
+          classList={{ clickable: !!props.onBack }}
+          onClick={(e) => {
+            e.stopPropagation();
+            props.onBack?.();
+          }}
+        >
+          ‹ Retour
+        </span>
         <span class="zap-pill zap-help caption">
           ↑ ↓ changer de chaîne · OK infos · 0–9 numéro · Retour
         </span>

@@ -1,6 +1,7 @@
 import { For, Show, createMemo } from 'solid-js';
 import { minutesLeft } from '@zapp/core';
 import type { App } from '../app/createApp';
+import { pointerTo, replaceAt } from '../app/pointer';
 import { Backdrop } from '../components/Backdrop';
 import { ChannelTileOf } from '../components/ChannelTileOf';
 import { LiveBadge } from '../components/LiveBadge';
@@ -88,7 +89,15 @@ export function Home(props: { app: App }) {
                   >
                     <For each={visibleColumns(row.channels.length, col())}>
                       {(c) => (
-                        <div class="home-tile" style={{ left: `${c * TILE_PITCH}px` }}>
+                        <div
+                          class="home-tile"
+                          style={{ left: `${c * TILE_PITCH}px` }}
+                          {...pointerTo(props.app, (s) => ({
+                            ...s,
+                            zone: 'content',
+                            home: { row: r(), cols: replaceAt(s.home.cols, r(), c) },
+                          }))}
+                        >
                           <ChannelTileOf
                             app={props.app}
                             channel={row.channels[c]!}

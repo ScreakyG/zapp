@@ -39,7 +39,8 @@ export function Player(props: { app: App }) {
   };
 
   return (
-    <div class="player">
+    // A click shows the banner, like OK on the remote.
+    <div class="player" onClick={() => props.app.pointer && props.app.press('ok')}>
       {video}
       {/* Only for stream-less demo channels: real channels' images are often small logos. */}
       <Show when={noStream() && imageUrl(channel()?.image)}>
@@ -55,6 +56,7 @@ export function Player(props: { app: App }) {
           typed={props.app.zap().typed}
           zapError={props.app.zap().error}
           playbackError={playbackError()}
+          onBack={props.app.pointer ? () => props.app.press('back') : undefined}
         />
       </Show>
     </div>

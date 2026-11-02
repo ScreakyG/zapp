@@ -1,6 +1,7 @@
 import { Match, Show, Switch } from 'solid-js';
 import { Stage } from './Stage';
 import { createApp } from './app/createApp';
+import { pointerTo } from './app/pointer';
 import { TabBar } from './components/TabBar';
 import { Guide } from './screens/Guide';
 import { Home } from './screens/Home';
@@ -37,6 +38,7 @@ export function App() {
           screen={nav().screen}
           focused={nav().zone === 'menu' ? nav().menuIdx : null}
           now={app.now()}
+          pointer={(i) => pointerTo(app, (s) => ({ ...s, zone: 'menu', menuIdx: i }))}
         />
       </Show>
     </Stage>

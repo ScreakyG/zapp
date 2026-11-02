@@ -1,6 +1,7 @@
 import { For, Index, Show, createMemo, createSelector } from 'solid-js';
 import { minutesLeft, minutesUntil, status, type Program } from '@zapp/core';
 import { GUIDE_SPAN, type App } from '../app/createApp';
+import { pointerTo } from '../app/pointer';
 import { Backdrop } from '../components/Backdrop';
 import { formatTime } from '../format';
 import { imageUrl } from '../images';
@@ -140,6 +141,19 @@ export function Guide(props: { app: App }) {
                   <Index each={props.app.guideRows()[row] ?? []}>
                     {(p, i) => (
                       <div
+                        {...pointerTo(props.app, (s) => ({
+                          ...s,
+                          zone: 'content',
+                          guide: {
+                            row,
+                            prog: i,
+                            // Same targeted time as moving there with the arrows.
+                            time:
+                              status(p(), at()) === 'current'
+                                ? props.app.now()
+                                : Math.max(p().start.getTime(), start()),
+                          },
+                        }))}
                         class="guide-program"
                         classList={{
                           focused: isFocusedCell(`${row}:${i}`),

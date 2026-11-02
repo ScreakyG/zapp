@@ -237,6 +237,20 @@ export function Settings(props: { app: App }) {
         <For each={rows()}>
           {(row, i) => (
             <div
+              {...(props.app.pointer
+                ? {
+                    onMouseMove: () => {
+                      props.app.point((s) => ({ ...s, zone: 'content' }));
+                      if (!editing()) setFocus(i());
+                    },
+                    onClick: () => {
+                      // From the TabBar, the row must take the focus before OK reaches it.
+                      props.app.point((s) => ({ ...s, zone: 'content' }), { click: true });
+                      setFocus(i());
+                      props.app.press('ok');
+                    },
+                  }
+                : {})}
               class="settings-row"
               classList={{ focused: inContent() && focus() === i(), button: row.kind === 'button' }}
             >

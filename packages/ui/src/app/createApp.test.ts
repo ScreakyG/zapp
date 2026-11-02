@@ -7,6 +7,12 @@ import { DEFAULT_SETTINGS, localSecretStore, type Settings } from './settings';
 const globals = globalThis as unknown as Record<string, unknown>;
 globals.window ??= new EventTarget();
 globals.document ??= { documentElement: { dataset: {} } };
+globals.KeyboardEvent ??= class extends Event {
+  constructor(type: string, init: Record<string, unknown> = {}) {
+    super(type, init);
+    Object.defineProperty(this, 'key', { value: init.key });
+  }
+};
 
 const { createApp } = await import('./createApp');
 
@@ -141,6 +147,44 @@ describe('createApp', () => {
     expect(await app.reload({ settings: candidate, secrets: app.secrets })).toBe(false);
     expect(app.loadError()).toBe('Playlist injoignable');
     expect(app.settings().groups).toEqual(['FR']);
+    dispose();
+  });
+
+  it('lets the pointer reach the TabBar from a screen that captures keys', async () => {
+    const a = controlledSource([channel('a', '001')]);
+    const { app, dispose } = start({}, [a.source]);
+    a.releaseChannels();
+    await flush();
+    // A screen capture (like Settings) that lets unhandled keys through.
+    const release = app.captureKeys(() => false);
+    app.point((s) => ({ ...s, zone: 'menu', menuIdx: 1 }), { click: true });
+    app.press('ok');
+    expect(app.nav().screen).toBe('guide');
+    // A modal entry blocks the pointer underneath.
+    const modal = app.captureKeys(() => true, { modal: true });
+    app.point((s) => ({ ...s, zone: 'menu', menuIdx: 2 }), { click: true });
+    expect(app.nav().zone).toBe('content');
+    modal();
+    release();
+    dispose();
+  });
+
+  it('pauses hovering while a focus change scrolls', async () => {
+    // A sport channel gives two home rows: Sport, then all channels.
+    const a = controlledSource([
+      { ...channel('a', '001'), category: 'sport' },
+      channel('b', '002'),
+    ]);
+    const { app, dispose } = start({}, [a.source]);
+    a.releaseChannels();
+    await flush();
+    const toRow = (row: number) => (s: ReturnType<typeof app.nav>) => ({
+      ...s,
+      home: { ...s.home, row },
+    });
+    app.point(toRow(1)); // slides the rows
+    app.point(toRow(0)); // the tile now under the cursor: ignored during the slide
+    expect(app.nav().home.row).toBe(1);
     dispose();
   });
 

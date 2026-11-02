@@ -5,6 +5,7 @@ import {
   normalize,
   openPlayer,
   programIndexAt,
+  reanchorGuide,
   type NavContext,
   type NavState,
 } from './nav';
@@ -105,6 +106,30 @@ describe('menu', () => {
 describe('guide', () => {
   const g = (row: number, prog: number, time = 52): NavState =>
     on({ screen: 'guide', guide: { row, prog, time } });
+
+  it('entering from the tab lands on the program at the targeted time', () => {
+    // Initial state was built before programs loaded: prog 0 is stale, time is now (52).
+    const stale = on({ zone: 'menu', menuIdx: 1, guide: { row: 2, prog: 0, time: 52 } });
+    expect(press(stale, 'ok').guide).toEqual({ row: 2, prog: 1, time: 52 });
+  });
+
+  it('a target behind the window start falls back to now', () => {
+    const old = on({ zone: 'menu', menuIdx: 1, guide: { row: 0, prog: 0, time: -500 } });
+    expect(press(old, 'ok').guide).toEqual({ row: 0, prog: 1, time: 52 });
+  });
+
+  it('reanchorGuide keeps the same show when the window slides', () => {
+    // Row 0 lost its first program (0→30): the show at time 75 is now index 1, not 2.
+    const slid: NavContext = {
+      ...ctx,
+      guideWindowStart: 30,
+      guidePrograms: (row) => (row === 0 ? GUIDE[0]!.slice(1) : (GUIDE[row] ?? [])),
+    };
+    const s = on({ screen: 'guide', guide: { row: 0, prog: 2, time: 75 } });
+    expect(reanchorGuide(s, slid).guide).toEqual({ row: 0, prog: 1, time: 75 });
+    const behind = on({ screen: 'guide', guide: { row: 0, prog: 0, time: 10 } });
+    expect(reanchorGuide(behind, slid).guide).toEqual({ row: 0, prog: 0, time: 52 });
+  });
 
   it('starts on the program airing now', () => {
     expect(start.guide).toEqual({ row: 0, prog: 1, time: 52 });

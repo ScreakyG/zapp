@@ -3,6 +3,7 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  on,
   onCleanup,
   untrack,
   type Accessor,
@@ -19,8 +20,10 @@ import {
   navigate,
   normalize,
   openPlayer,
+  overlaps,
   programAt,
   progress,
+  reanchorGuide,
   startZapping,
   toAction,
   type Channel,
@@ -46,6 +49,9 @@ export interface HomeRowView {
 
 /** A source, optionally with curated home rows (the demo has some). */
 type AppSource = Source & { homeRows?: () => HomeRowSpec[] };
+
+const HALF_HOUR = 1_800_000;
+export const GUIDE_SPAN = 4 * HALF_HOUR;
 
 /** Hours of programs loaded on each side of now. */
 const PROGRAM_SPAN = 6 * 3_600_000;
@@ -81,13 +87,24 @@ export function createApp(source: AppSource = new DemoSource()) {
     return channels().flatMap((c, i) => (!id || c.category === id ? [i] : []));
   };
 
+  /** Guide window: 2 h, starting 30 to 60 min before now so recent programs stay in view. */
+  const guideStart = createMemo(() => Math.floor((now() - HALF_HOUR) / HALF_HOUR) * HALF_HOUR);
+  /** Programs of each channel (one guide row per channel) overlapping the guide window. */
+  const guideRows = createMemo(() => {
+    const from = new Date(guideStart());
+    const to = new Date(guideStart() + GUIDE_SPAN);
+    return channels().map((c) => (programs().get(c.id) ?? []).filter((p) => overlaps(p, from, to)));
+  });
+  const guideSpans = createMemo(() =>
+    guideRows().map((row) => row.map((p) => ({ start: p.start.getTime(), end: p.end.getTime() }))),
+  );
+
   const ctx: Accessor<NavContext> = createMemo(() => ({
     now: now(),
     channelCount: channels().length,
     homeRows: homeRows().map((r) => r.channels),
-    // Filled in by the guide screen (#8).
-    guidePrograms: () => [],
-    guideWindowStart: now(),
+    guidePrograms: (row: number) => guideSpans()[row] ?? [],
+    guideWindowStart: guideStart(),
     mosaicFilterCount: MOSAIC_FILTERS.length,
     mosaicColumns: MOSAIC_COLUMNS,
     mosaicChannels,
@@ -96,6 +113,14 @@ export function createApp(source: AppSource = new DemoSource()) {
   const [nav, setNav] = createSignal<NavState>(initialNav(ctx()));
   /** What screens render: the navigation state with indices clamped to the current content. */
   const view = createMemo(() => normalize(nav(), ctx()));
+
+  // Guide rows changed (window slid, EPG reloaded): indices shifted, keep focus on the same show.
+  createEffect(
+    on(guideSpans, () => setNav((s) => reanchorGuide(s, untrack(ctx))), { defer: true }),
+  );
+
+  /** Now, to the minute: what screens display, so a keypress does not re-render every cell. */
+  const minute = createMemo(() => Math.floor(now() / 60_000) * 60_000);
 
   let bannerTimer: ReturnType<typeof setTimeout> | undefined;
   const showBanner = () => {
@@ -203,7 +228,7 @@ export function createApp(source: AppSource = new DemoSource()) {
   const onAir = (channel: number): OnAir => {
     const c = channels()[channel];
     const list = c ? (programs().get(c.id) ?? []) : [];
-    const at = new Date(now());
+    const at = new Date(minute());
     const program = programAt(list, at);
     return {
       program,
@@ -231,7 +256,19 @@ export function createApp(source: AppSource = new DemoSource()) {
   });
   load().catch((error: unknown) => console.error('Loading channels failed', error));
 
-  return { channels, homeRows, programs, onAir, nav: view, now, banner, zap, mosaicChannels };
+  return {
+    channels,
+    homeRows,
+    programs,
+    onAir,
+    guideStart,
+    guideRows,
+    nav: view,
+    now: minute,
+    banner,
+    zap,
+    mosaicChannels,
+  };
 }
 
 export type App = ReturnType<typeof createApp>;

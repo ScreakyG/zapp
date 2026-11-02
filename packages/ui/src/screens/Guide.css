@@ -1,0 +1,217 @@
+.guide,
+.guide-veil {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/*
+ * Blurred picture of the focused channel. Blurring a full-size layer every frame of the
+ * cross-fade is too costly for the TV: the picture is drawn at a quarter size with a quarter
+ * of the blur, then scaled up 4x (only transform/opacity reach the compositor afterwards).
+ * Oversized by 80 px on each side so the blur has no faded edges.
+ */
+.guide-backdrop {
+  position: absolute;
+  top: -80px;
+  left: -80px;
+  width: 360px;
+  height: 220px;
+  overflow: hidden;
+  transform: scale(4);
+  transform-origin: 0 0;
+}
+
+.guide-backdrop .backdrop-layer {
+  width: 360px;
+  height: 220px;
+  filter: blur(calc(var(--blur-backdrop) / 4)) saturate(1.4);
+  will-change: opacity;
+}
+
+.guide-veil {
+  background: rgba(var(--bg-rgb), 0.8);
+}
+
+.guide-detail {
+  position: absolute;
+  top: 112px;
+  left: var(--space-safe);
+  right: var(--space-safe);
+  height: 96px;
+}
+
+.guide-detail-title,
+.guide-detail-status {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guide-detail-title {
+  margin: 4px 0;
+}
+
+.guide-detail-status {
+  font-weight: 400;
+}
+
+.guide-detail-state {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.guide-detail-state.accent {
+  color: var(--accent-text);
+}
+
+.guide-detail-number {
+  margin-right: var(--space-xs);
+}
+
+.guide-marks {
+  position: absolute;
+  top: 226px;
+  left: 0;
+  width: 1280px;
+  height: 20px;
+}
+
+.guide-marks span {
+  position: absolute;
+}
+
+.guide-grid {
+  position: absolute;
+  top: 250px;
+  left: var(--space-safe);
+  right: 0;
+  height: 470px;
+  overflow: hidden;
+}
+
+.guide-track {
+  position: relative;
+  top: 6px;
+  transition: transform var(--focus-duration) var(--focus-easing);
+}
+
+.guide-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 64px;
+  margin-bottom: var(--space-xs);
+}
+
+.guide-channel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 232px;
+  height: 64px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+  background: var(--glass);
+  transition: background var(--focus-duration) var(--focus-easing);
+}
+
+.guide-channel.focused {
+  background: var(--glass-strong);
+}
+
+.guide-channel-image {
+  width: 56px;
+  height: 40px;
+  flex: none;
+  margin-right: 12px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.guide-channel-text {
+  min-width: 0;
+}
+
+.guide-channel-number {
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.guide-channel.focused .guide-channel-number {
+  color: var(--accent-text);
+}
+
+.guide-channel-name,
+.guide-program-title,
+.guide-program-time {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guide-program {
+  position: absolute;
+  top: 0;
+  height: 64px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  background: var(--glass);
+  color: var(--ink);
+  z-index: 1;
+  transition:
+    background var(--focus-duration) var(--focus-easing),
+    transform var(--focus-duration) var(--focus-easing);
+}
+
+.guide-program.current {
+  background: var(--glass-strong);
+}
+
+.guide-program.focused {
+  background: var(--accent);
+  color: var(--on-accent);
+  transform: scale(1.04);
+  box-shadow: var(--shadow-pill);
+  z-index: 2;
+}
+
+.guide-program-time {
+  margin-top: 3px;
+  color: var(--ink-muted);
+}
+
+.guide-program.current .guide-program-time {
+  color: var(--accent-text);
+}
+
+.guide-program.focused .guide-program-time {
+  color: var(--on-accent);
+}
+
+/* Current time: 2px live line over the whole grid, 10px dot on top. */
+.guide-now {
+  position: absolute;
+  top: 248px;
+  width: 2px;
+  height: 472px;
+  background: var(--live);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.guide-now::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--live);
+}

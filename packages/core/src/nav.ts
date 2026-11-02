@@ -107,7 +107,7 @@ type Nav = Exclude<Action, { digit: number }>;
 export function navigate(current: NavState, action: Nav, ctx: NavContext): NavResult {
   const state = normalize(current, ctx);
   if (state.screen === 'player') return player(state, action, ctx);
-  if (state.zone === 'menu') return menu(state, action);
+  if (state.zone === 'menu') return menu(state, action, ctx);
   switch (state.screen) {
     case 'home':
       return home(state, action, ctx);
@@ -162,7 +162,25 @@ function player(state: NavState, action: Nav, ctx: NavContext): NavResult {
   return { state, effects: [{ type: 'showBanner' }] };
 }
 
-function menu(state: NavState, action: Nav): NavResult {
+/**
+ * Opening the guide lands on what airs at the targeted time in the remembered row; a target left
+ * behind by the sliding window (or never set) falls back to now.
+ */
+function enterGuide(state: NavState, ctx: NavContext): NavState {
+  return state.screen === 'guide' ? reanchorGuide(state, ctx) : state;
+}
+
+/**
+ * Re-derives the focused guide program from the targeted time. Call it when the guide window
+ * slides (programs drop out on the left, shifting indices) so the focus stays on the same show.
+ */
+export function reanchorGuide(state: NavState, ctx: NavContext): NavState {
+  const time = state.guide.time < ctx.guideWindowStart ? ctx.now : state.guide.time;
+  const prog = programIndexAt(ctx.guidePrograms(state.guide.row), time);
+  return { ...state, guide: { row: state.guide.row, prog, time } };
+}
+
+function menu(state: NavState, action: Nav, ctx: NavContext): NavResult {
   switch (action) {
     case 'left':
       return done({ ...state, menuIdx: Math.max(0, state.menuIdx - 1) });
@@ -171,7 +189,7 @@ function menu(state: NavState, action: Nav): NavResult {
     case 'down':
       return done({ ...state, zone: state.screen === 'mosaic' ? 'chips' : 'content' });
     case 'ok':
-      return done(goTo(state, MENU[state.menuIdx]!));
+      return done(enterGuide(goTo(state, MENU[state.menuIdx]!), ctx));
     case 'back':
       return state.screen === 'home' ? done(state) : done(goTo(state, 'home'));
     default:

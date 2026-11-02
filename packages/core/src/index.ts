@@ -6,4 +6,5 @@ export * from './home';
 export * from './nav';
 export * from './categories';
 export * from './xtream';
+export * from './m3u';
 export * from './zap';

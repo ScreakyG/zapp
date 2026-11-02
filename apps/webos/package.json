@@ -1,0 +1,17 @@
+{
+  "name": "@zapp/webos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zapp pour LG webOS",
+  "scripts": {
+    "stage": "pnpm --filter @zapp/ui build:webos && node scripts/stage.cjs",
+    "package": "pnpm run stage && ares-package build --outdir out",
+    "install-tv": "ares-install --device tv out/dev.zapp.tv_0.1.0_all.ipk",
+    "launch": "ares-launch --device tv dev.zapp.tv",
+    "deploy": "pnpm run package && pnpm run install-tv && pnpm run launch",
+    "inspect": "ares-inspect --device tv --app dev.zapp.tv --open"
+  },
+  "devDependencies": {
+    "@webos-tools/cli": "^3.2.6"
+  }
+}

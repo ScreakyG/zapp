@@ -26,9 +26,11 @@ const EPG_MAX_AGE = 6 * 3_600_000;
 export class M3uSource implements Source {
   private readonly http: typeof fetch;
   private readonly store: EpgStore;
-  private headerEpgUrl?: string;
+  private headerEpgUrls: string[] = [];
   private epgIds = new Set<string>();
+  private channelsLoaded?: Promise<Channel[]>;
   private guide?: Promise<Map<string, Program[]>>;
+  /** When the guide in memory was read from the provider (not when it was loaded). */
   private guideAt = 0;
 
   constructor(private readonly config: M3uConfig) {
@@ -36,16 +38,9 @@ export class M3uSource implements Source {
     this.store = config.store ?? new MemoryEpgStore();
   }
 
-  async getChannels(): Promise<Channel[]> {
-    const text = await this.download(this.config.playlistUrl, 'Playlist').then((r) => r.text());
-    if (!/#EXTM3U|#EXTINF/i.test(text.slice(0, 2048))) {
-      throw new M3uError('Ce fichier n’est pas une playlist M3U');
-    }
-    const header = /#EXTM3U[^\n]*?(?:url-tvg|x-tvg-url)="([^"]+)"/i.exec(text);
-    this.headerEpgUrl = header?.[1]?.split(',')[0];
-    const channels = m3uChannels(parseM3u(text), this.config);
-    this.epgIds = new Set(channels.flatMap((c) => (c.epgId ? [c.epgId] : [])));
-    return channels;
+  getChannels(): Promise<Channel[]> {
+    this.channelsLoaded = this.readPlaylist();
+    return this.channelsLoaded;
   }
 
   async getPrograms(channel: Channel, from: Date, to: Date): Promise<Program[]> {
@@ -56,36 +51,77 @@ export class M3uSource implements Source {
       .map((p) => ({ ...p, channelId: channel.id }));
   }
 
-  /** The guide, from the cache when fresh, otherwise downloaded once for all channels. */
+  private async readPlaylist(): Promise<Channel[]> {
+    const text = await this.download(this.config.playlistUrl, 'Playlist').then((r) => r.text());
+    if (!/#EXTM3U|#EXTINF/i.test(text.slice(0, 2048))) {
+      throw new M3uError('Ce fichier n’est pas une playlist M3U');
+    }
+    const header = /#EXTM3U[^\n]*?(?:url-tvg|x-tvg-url|tvg-url)="([^"]+)"/i.exec(text);
+    this.headerEpgUrls = (header?.[1] ?? '')
+      .split(',')
+      .map((u) => u.trim())
+      .filter(Boolean);
+    const channels = m3uChannels(parseM3u(text), this.config);
+    this.epgIds = new Set(channels.flatMap((c) => (c.epgId ? [c.epgId] : [])));
+    return channels;
+  }
+
+  /**
+   * The guide, read once for all channels and kept for EPG_MAX_AGE. A failed refresh keeps
+   * serving the previous guide rather than blanking the grid.
+   */
   private loadGuide(): Promise<Map<string, Program[]>> {
     if (this.guide && Date.now() - this.guideAt < EPG_MAX_AGE) return this.guide;
+    const previous = this.guide;
+    // Provisional, so concurrent calls share this load; readGuide sets the real age.
     this.guideAt = Date.now();
-    this.guide = this.readGuide().catch((error: unknown) => {
-      this.guide = undefined; // Retry on the next call.
+    const loading = this.readGuide();
+    this.guide = loading.catch((error: unknown) => {
+      this.guide = previous;
+      if (previous) return previous;
       throw error;
     });
     return this.guide;
   }
 
   private async readGuide(): Promise<Map<string, Program[]>> {
-    const cached = await this.store.load().catch(() => undefined);
-    if (cached && Date.now() - cached.savedAt < EPG_MAX_AGE) return group(cached.programmes);
+    // The guide is filtered on the playlist's channels: wait for them.
+    await (this.channelsLoaded ?? this.getChannels());
+    const urls = this.config.epgUrl ? [this.config.epgUrl] : this.headerEpgUrls;
+    if (urls.length === 0) {
+      this.guideAt = Date.now();
+      return new Map();
+    }
+    let lastError: unknown;
+    for (const url of urls) {
+      const cached = await this.store.load(url).catch(() => undefined);
+      if (cached && Date.now() - cached.savedAt < EPG_MAX_AGE) {
+        this.guideAt = cached.savedAt;
+        return group(cached.programmes);
+      }
+      try {
+        const programmes = await this.downloadGuide(url);
+        this.guideAt = Date.now();
+        await this.store.save(url, programmes).catch(() => {});
+        return group(programmes);
+      } catch (error) {
+        lastError = error; // Try the next guide listed by the playlist.
+      }
+    }
+    throw lastError;
+  }
 
-    const url = this.config.epgUrl || this.headerEpgUrl;
-    if (!url) return new Map();
+  private async downloadGuide(url: string) {
     const response = await this.download(url, 'Guide');
     if (!response.body) throw new M3uError('Guide TV illisible');
     // TODO: .xml.gz guides served without Content-Encoding need DecompressionStream (Chromium 80+).
     const now = Date.now();
-    const programmes = await readXmltv(response.body, {
+    return readXmltv(response.body, {
       from: new Date(now - EPG_HALF_WINDOW),
       to: new Date(now + EPG_HALF_WINDOW),
-      channels: this.epgIds.size ? this.epgIds : undefined,
+      channels: this.epgIds,
     });
-    await this.store.save(programmes).catch(() => {});
-    return group(programmes);
   }
-
   private async download(url: string, what: string): Promise<Response> {
     let response: Response;
     try {

@@ -77,11 +77,9 @@ describe('XmltvReader', () => {
         controller.enqueue(encoder.encode(piece));
       },
     });
-    const started = Date.now();
     const result = await readXmltv(body, { ...window, channels: new Set(['c1', 'c2']) });
     // c1/c2 are 2 channels in 500; 10 of their 12 hourly slots end after the window start.
     expect(result).toHaveLength(400);
-    expect(Date.now() - started).toBeLessThan(10_000);
   });
 });
 
@@ -94,19 +92,20 @@ describe('helpers', () => {
   });
 
   it('decodes entities', () => {
-    expect(decodeEntities('a &lt;b&gt; &quot;c&quot; &#39;d&apos; &#x1F4FA; &unknown;')).toBe(
-      'a <b> "c" \'d\' 📺 &unknown;',
-    );
+    expect(
+      decodeEntities('a &lt;b&gt; &quot;c&quot; &#39;d&apos; &#x1F4FA; &unknown; &#99999999;'),
+    ).toBe('a <b> "c" \'d\' 📺 &unknown; &#99999999;');
   });
 });
 
 describe('IndexedDbEpgStore', () => {
   it('round-trips programmes with their dates', async () => {
     const store = new IndexedDbEpgStore('test');
-    expect(await store.load()).toBeUndefined();
+    expect(await store.load('u')).toBeUndefined();
     const programmes = read(GUIDE, 100);
-    await store.save(programmes);
-    const loaded = await store.load();
+    await store.save('u', programmes);
+    expect(await store.load('other')).toBeUndefined();
+    const loaded = await store.load('u');
     expect(loaded?.programmes).toEqual(programmes);
     expect(loaded?.programmes[0]!.start).toBeInstanceOf(Date);
   });

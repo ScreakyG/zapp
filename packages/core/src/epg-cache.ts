@@ -1,19 +1,24 @@
 import type { XmltvProgramme } from './xmltv';
 
-/** Programmes kept per EPG channel id, with the time they were downloaded. */
+export interface CachedGuide {
+  savedAt: number;
+  programmes: XmltvProgramme[];
+}
+
+/** The last guide read, tied to the URL it came from so a source switch never reuses it. */
 export interface EpgStore {
-  load(): Promise<{ savedAt: number; programmes: XmltvProgramme[] } | undefined>;
-  save(programmes: XmltvProgramme[]): Promise<void>;
+  load(url: string): Promise<CachedGuide | undefined>;
+  save(url: string, programmes: XmltvProgramme[]): Promise<void>;
 }
 
 /** In memory: tests, and platforms without IndexedDB. */
 export class MemoryEpgStore implements EpgStore {
-  private saved?: { savedAt: number; programmes: XmltvProgramme[] };
-  async load() {
-    return this.saved;
+  private saved?: CachedGuide & { url: string };
+  async load(url: string) {
+    return this.saved?.url === url ? this.saved : undefined;
   }
-  async save(programmes: XmltvProgramme[]) {
-    this.saved = { savedAt: Date.now(), programmes };
+  async save(url: string, programmes: XmltvProgramme[]) {
+    this.saved = { url, savedAt: Date.now(), programmes };
   }
 }
 
@@ -26,18 +31,19 @@ const KEY = 'xmltv';
  * record holds the whole window (a few thousand programmes), replaced on each refresh.
  */
 export class IndexedDbEpgStore implements EpgStore {
+  /** `idb` is resolved on use: constructing the store must not throw where IndexedDB is missing. */
   constructor(
     private readonly key = KEY,
-    private readonly idb: IDBFactory = indexedDB,
+    private readonly idb?: IDBFactory,
   ) {}
 
-  async load() {
+  async load(url: string) {
     const db = await this.open();
     try {
       const record = await request<StoredGuide | undefined>(
         db.transaction(STORE, 'readonly').objectStore(STORE).get(this.key),
       );
-      if (!record) return undefined;
+      if (!record || record.url !== url) return undefined;
       return {
         savedAt: record.savedAt,
         programmes: record.programmes.map((p) => ({
@@ -51,10 +57,11 @@ export class IndexedDbEpgStore implements EpgStore {
     }
   }
 
-  async save(programmes: XmltvProgramme[]) {
+  async save(url: string, programmes: XmltvProgramme[]) {
     const db = await this.open();
     try {
       const record: StoredGuide = {
+        url,
         savedAt: Date.now(),
         programmes: programmes.map((p) => ({
           ...p,
@@ -75,13 +82,17 @@ export class IndexedDbEpgStore implements EpgStore {
   }
 
   private open(): Promise<IDBDatabase> {
-    const req = this.idb.open(DB_NAME, 1);
+    const idb = this.idb ?? globalThis.indexedDB;
+    if (!idb) return Promise.reject(new Error('IndexedDB indisponible'));
+    const req = idb.open(DB_NAME, 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onblocked = () => console.warn('EPG cache upgrade blocked by another tab');
     return request(req);
   }
 }
 
 interface StoredGuide {
+  url: string;
   savedAt: number;
   programmes: (Omit<XmltvProgramme, 'start' | 'end'> & { start: number; end: number })[];
 }

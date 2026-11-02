@@ -133,7 +133,7 @@ export function decodeEntities(value: string): string {
   return value.replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (whole, code: string) => {
     if (code[0] === '#') {
       const n = code[1] === 'x' || code[1] === 'X' ? parseInt(code.slice(2), 16) : +code.slice(1);
-      return Number.isFinite(n) ? String.fromCodePoint(n) : whole;
+      return Number.isInteger(n) && n >= 0 && n <= 0x10ffff ? String.fromCodePoint(n) : whole;
     }
     return ENTITIES[code.toLowerCase()] ?? whole;
   });

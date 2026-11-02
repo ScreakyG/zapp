@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   initialNav,
   navigate,
+  normalize,
   openPlayer,
   programIndexAt,
   type NavContext,
@@ -74,7 +75,7 @@ describe('home', () => {
   it('opens the focused channel', () => {
     const r = navigate(press(start, 'right'), 'ok', ctx);
     expect(r.state).toMatchObject({ screen: 'player', prevScreen: 'home', player: { channel: 3 } });
-    expect(r.effects).toEqual([{ type: 'openPlayer', channel: 3 }, { type: 'showBanner' }]);
+    expect(r.effects).toEqual([{ type: 'tune', channel: 3 }, { type: 'showBanner' }]);
   });
 });
 
@@ -178,22 +179,42 @@ describe('mosaic', () => {
       player: { channel: 3 },
     });
   });
+
+  it('OK on the chips enters the grid', () => {
+    expect(press(m(0, 0, 'chips'), 'ok').zone).toBe('content');
+  });
+});
+
+describe('Back', () => {
+  it('returns home from the guide, the mosaic grid and the chips', () => {
+    expect(press(on({ screen: 'guide' }), 'back').screen).toBe('home');
+    expect(press(on({ screen: 'mosaic' }), 'back').screen).toBe('home');
+    expect(press(on({ screen: 'mosaic', zone: 'chips' }), 'back').screen).toBe('home');
+  });
+
+  it('does nothing on home content', () => {
+    expect(press(start, 'back')).toEqual(start);
+  });
 });
 
 describe('player', () => {
   const p = (channel: number): NavState =>
     on({ screen: 'player', prevScreen: 'home', player: { channel } });
 
-  it('↑ next and ↓ previous channel, looping', () => {
+  it('↑ next and ↓ previous channel, looping, and retunes', () => {
     expect(press(p(4), 'up').player.channel).toBe(0);
     expect(press(p(0), 'down').player.channel).toBe(4);
+    expect(navigate(p(1), 'up', ctx).effects).toEqual([
+      { type: 'tune', channel: 2 },
+      { type: 'showBanner' },
+    ]);
   });
 
   it('← → OK only show the banner', () => {
     const state = p(1);
     for (const a of ['left', 'right', 'ok'] as const) {
       const r = navigate(state, a, ctx);
-      expect(r.state).toBe(state);
+      expect(r.state).toEqual(state);
       expect(r.effects).toEqual([{ type: 'showBanner' }]);
     }
   });
@@ -207,11 +228,93 @@ describe('player', () => {
   });
 });
 
+describe('menu edges', () => {
+  it('clamps ← on the first tab', () => {
+    expect(press(start, 'up', 'left').menuIdx).toBe(0);
+  });
+});
+
 describe('settings', () => {
+  const settings = press(on({ screen: 'guide' }), 'up', 'right', 'right', 'right', 'ok');
+
   it('Back returns to the screen it was opened from', () => {
-    const s = press(on({ screen: 'guide' }), 'up', 'right', 'right', 'right', 'ok');
-    expect(s).toMatchObject({ screen: 'settings', prevScreen: 'guide' });
-    expect(press(s, 'back').screen).toBe('guide');
+    expect(settings).toMatchObject({ screen: 'settings', settingsReturn: 'guide' });
+    expect(press(settings, 'back').screen).toBe('guide');
+  });
+
+  it('ignores arrows for now', () => {
+    expect(press(settings, 'left', 'down', 'ok')).toEqual(settings);
+  });
+
+  it('player opened over settings unwinds without getting stuck', () => {
+    const playing = openPlayer(settings, 2).state;
+    const back = press(playing, 'back');
+    expect(back.screen).toBe('settings');
+    expect(press(back, 'back').screen).toBe('guide');
+  });
+});
+
+describe('normalize', () => {
+  it('clamps indices left stale by shrunk content', () => {
+    const stale = on({
+      screen: 'mosaic',
+      home: { row: 9, cols: [7, 7, 7] },
+      mosaic: { filter: 1, idx: 5 },
+      guide: { row: 9, prog: 9, time: 52 },
+      player: { channel: 99 },
+    });
+    expect(normalize(stale, ctx)).toMatchObject({
+      home: { row: 2, cols: [2, 1, 4] },
+      mosaic: { filter: 1, idx: 1 },
+      guide: { row: 4, prog: 0 },
+      player: { channel: 4 },
+    });
+  });
+
+  it('moves focus out of a grid that became empty', () => {
+    expect(normalize(on({ screen: 'mosaic', mosaic: { filter: 2, idx: 0 } }), ctx).zone).toBe(
+      'chips',
+    );
+  });
+
+  it('lets OK act on a clamped home column', () => {
+    const r = navigate(on({ home: { row: 1, cols: [0, 9, 0] } }), 'ok', ctx);
+    expect(r.effects[0]).toEqual({ type: 'tune', channel: 1 });
+  });
+
+  it('survives empty content', () => {
+    const empty: NavContext = {
+      ...ctx,
+      channelCount: 0,
+      homeRows: [],
+      mosaicChannels: () => [],
+    };
+    const s = initialNav(empty);
+    expect(navigate(s, 'down', empty).state.home.row).toBe(0);
+    expect(navigate(on({ screen: 'player' }), 'up', empty).effects).toEqual([
+      { type: 'showBanner' },
+    ]);
+  });
+});
+
+describe('guide window', () => {
+  // Epoch-like values with the window starting after the first program began.
+  const t0 = 1_000_000;
+  const windowed: NavContext = {
+    ...ctx,
+    now: t0 + 50,
+    guideWindowStart: t0,
+    guidePrograms: () => [
+      { start: t0 - 30, end: t0 + 20 },
+      { start: t0 + 20, end: t0 + 80 },
+      { start: t0 + 80, end: t0 + 120 },
+    ],
+  };
+
+  it('targets the visible start of a program that began before the window', () => {
+    const s = on({ screen: 'guide', guide: { row: 0, prog: 1, time: t0 + 50 } });
+    expect(navigate(s, 'left', windowed).state.guide).toEqual({ row: 0, prog: 0, time: t0 });
+    expect(navigate(s, 'right', windowed).state.guide.time).toBe(t0 + 80);
   });
 });
 

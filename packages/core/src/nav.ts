@@ -14,9 +14,12 @@ export const MENU = ['home', 'guide', 'mosaic', 'settings'] as const;
 
 export interface NavState {
   screen: Screen;
-  /** Screen to return to from the player or settings. */
+  /** Screen to return to from the player. */
   prevScreen: Screen;
+  /** Screen to return to from settings (kept apart: the player can open over settings). */
+  settingsReturn: Screen;
   zone: Zone;
+  /** Focused menu entry while `zone` is 'menu'; the TabBar's current tab comes from `screen`. */
   menuIdx: number;
   /** Focused row, and the focused column remembered per row. */
   home: { row: number; cols: number[] };
@@ -32,12 +35,15 @@ export interface Span {
   end: number;
 }
 
-/** What the navigation needs to know about the content, in list indices and epoch ms. */
+/**
+ * What the navigation needs to know about the content, in epoch ms and indices into the channel
+ * list. Rebuild it when content or time changes; `normalize` then repairs stale indices.
+ */
 export interface NavContext {
   now: number;
   channelCount: number;
   homeRows: number[][];
-  /** Programs of a guide row (one row per channel), clipped to the visible window, sorted. */
+  /** Programs of a guide row, clipped to the visible window, sorted. Guide row i = channel i. */
   guidePrograms(row: number): Span[];
   guideWindowStart: number;
   mosaicFilterCount: number;
@@ -45,7 +51,8 @@ export interface NavContext {
   mosaicChannels(filter: number): number[];
 }
 
-export type Effect = { type: 'openPlayer'; channel: number } | { type: 'showBanner' };
+/** `tune`: play `channel` (opening the player, or zapping inside it). */
+export type Effect = { type: 'tune'; channel: number } | { type: 'showBanner' };
 
 export interface NavResult {
   state: NavState;
@@ -56,6 +63,7 @@ export function initialNav(ctx: NavContext): NavState {
   return {
     screen: 'home',
     prevScreen: 'home',
+    settingsReturn: 'home',
     zone: 'content',
     menuIdx: 0,
     home: { row: 0, cols: ctx.homeRows.map(() => 0) },
@@ -65,9 +73,39 @@ export function initialNav(ctx: NavContext): NavState {
   };
 }
 
+/**
+ * Clamps every stored index to the current content (a filter list that shrank, a home row
+ * shorter than its remembered column, a guide row whose programs changed). Screens render from
+ * the normalized state so that exactly one element is focused; `navigate` applies it first.
+ */
+export function normalize(state: NavState, ctx: NavContext): NavState {
+  const rows = ctx.homeRows;
+  const homeRow = clamp(state.home.row, 0, Math.max(0, rows.length - 1));
+  const cols = rows.map((r, i) => clamp(state.home.cols[i] ?? 0, 0, Math.max(0, r.length - 1)));
+  const guideRow = clamp(state.guide.row, 0, Math.max(0, ctx.channelCount - 1));
+  const programs = ctx.guidePrograms(guideRow);
+  const filter = clamp(state.mosaic.filter, 0, Math.max(0, ctx.mosaicFilterCount - 1));
+  const tiles = ctx.mosaicChannels(filter).length;
+  const next: NavState = {
+    ...state,
+    home: { row: homeRow, cols },
+    guide: {
+      row: guideRow,
+      prog: clamp(state.guide.prog, 0, Math.max(0, programs.length - 1)),
+      time: state.guide.time,
+    },
+    mosaic: { filter, idx: clamp(state.mosaic.idx, 0, Math.max(0, tiles - 1)) },
+    player: { channel: clamp(state.player.channel, 0, Math.max(0, ctx.channelCount - 1)) },
+  };
+  // Nothing to focus in an emptied mosaic grid: fall back to the chips.
+  if (next.screen === 'mosaic' && next.zone === 'content' && tiles === 0) next.zone = 'chips';
+  return next;
+}
+
 type Nav = Exclude<Action, { digit: number }>;
 
-export function navigate(state: NavState, action: Nav, ctx: NavContext): NavResult {
+export function navigate(current: NavState, action: Nav, ctx: NavContext): NavResult {
+  const state = normalize(current, ctx);
   if (state.screen === 'player') return player(state, action, ctx);
   if (state.zone === 'menu') return menu(state, action);
   switch (state.screen) {
@@ -79,7 +117,7 @@ export function navigate(state: NavState, action: Nav, ctx: NavContext): NavResu
       return mosaic(state, action, ctx);
     case 'settings':
       return action === 'back'
-        ? done({ ...state, screen: state.prevScreen, zone: 'content' })
+        ? done({ ...state, screen: state.settingsReturn, zone: 'content' })
         : done(state);
   }
 }
@@ -89,14 +127,17 @@ export function openPlayer(state: NavState, channel: number): NavResult {
   const from = state.screen === 'player' ? state.prevScreen : state.screen;
   return {
     state: { ...state, screen: 'player', prevScreen: from, player: { channel } },
-    effects: [{ type: 'openPlayer', channel }, { type: 'showBanner' }],
+    effects: [{ type: 'tune', channel }, { type: 'showBanner' }],
   };
 }
 
 function player(state: NavState, action: Nav, ctx: NavContext): NavResult {
-  if (action === 'up' || action === 'down') {
+  if ((action === 'up' || action === 'down') && ctx.channelCount > 0) {
     const channel = wrap(state.player.channel + (action === 'up' ? 1 : -1), ctx.channelCount);
-    return { state: { ...state, player: { channel } }, effects: [{ type: 'showBanner' }] };
+    return {
+      state: { ...state, player: { channel } },
+      effects: [{ type: 'tune', channel }, { type: 'showBanner' }],
+    };
   }
   if (action === 'back') {
     const next: NavState = { ...state, screen: state.prevScreen, zone: 'content' };
@@ -142,7 +183,10 @@ function home(state: NavState, action: Nav, ctx: NavContext): NavResult {
         ? done({ ...state, home: { row: row - 1, cols } })
         : done(toMenu(state, 'home'));
     case 'down':
-      return done({ ...state, home: { row: Math.min(ctx.homeRows.length - 1, row + 1), cols } });
+      return done({
+        ...state,
+        home: { row: Math.max(0, Math.min(ctx.homeRows.length - 1, row + 1)), cols },
+      });
     case 'ok': {
       const channel = ctx.homeRows[row]?.[col];
       return channel === undefined ? done(state) : openPlayer(state, channel);
@@ -244,7 +288,8 @@ function focusTime(p: Span, ctx: NavContext): number {
 function goTo(state: NavState, screen: Screen): NavState {
   const menuIdx = MENU.indexOf(screen as (typeof MENU)[number]);
   if (screen === 'settings') {
-    return { ...state, screen, prevScreen: state.screen, zone: 'content', menuIdx };
+    const settingsReturn = state.screen === 'settings' ? state.settingsReturn : state.screen;
+    return { ...state, screen, settingsReturn, zone: 'content', menuIdx };
   }
   return { ...state, screen, zone: 'content', menuIdx };
 }

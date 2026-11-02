@@ -12,10 +12,7 @@ function classicScript(): Plugin {
     apply: 'build',
     transformIndexHtml: {
       order: 'post',
-      handler: (html) =>
-        html
-          .replace(/<script type="module" crossorigin/g, '<script defer')
-          .replace(/<link rel="stylesheet" crossorigin/g, '<link rel="stylesheet"'),
+      handler: (html) => html.replace(/<script type="module" crossorigin/g, '<script defer'),
     },
   };
 }

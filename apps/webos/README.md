@@ -5,8 +5,8 @@ Paquet `.ipk` de l'interface, à installer en **mode développeur** (usage perso
 ## 1. Préparer la TV (une seule fois)
 
 1. Sur la TV, ouvrir le **LG Content Store**, installer l'app **Developer Mode** et s'y connecter avec un compte développeur LG (gratuit, sur [webostv.developer.lge.com](https://webostv.developer.lge.com)).
-2. Dans Developer Mode, activer **Dev Mode Status**, puis **Key Server**. La TV redémarre. Noter l'**adresse IP** et la **passphrase** affichées.
-3. Le mode développeur **expire au bout de 1 000 heures** (environ 41 jours) : il faut rouvrir l'app Developer Mode et cliquer sur **Extend** avant cette échéance, sinon les apps installées sont supprimées.
+2. Dans Developer Mode, activer **Dev Mode Status** : la TV redémarre. Rouvrir l'app, activer **Key Server**, puis noter l'**adresse IP** et la **passphrase** affichées.
+3. La session du mode développeur **expire** (le compteur de l'app affiche le temps restant, environ 1 000 h sur les versions récentes) : rouvrir Developer Mode et cliquer sur **Extend** avant l'échéance, sinon les apps installées sont supprimées.
 
 ## 2. Déclarer la TV sur le PC (une seule fois)
 
@@ -25,13 +25,13 @@ Saisir la passphrase affichée sur la TV quand elle est demandée.
 ## 3. Construire, installer et lancer
 
 ```bash
-pnpm --filter @zapp/webos deploy
+pnpm --filter @zapp/webos run deploy-tv
 ```
 
-Cette commande enchaîne `package` (bundle TV de l'UI, puis `out/dev.zapp.tv_0.1.0_all.ipk`), `install-tv` et `launch`. Pour déboguer avec les DevTools de Chromium :
+Cette commande enchaîne `package` (bundle TV de l'UI, puis `out/<id>_<version>_all.ipk`), `install-tv` et `launch-tv` (pas `deploy` : pnpm a une commande intégrée de ce nom). Pour déboguer avec les DevTools de Chromium :
 
 ```bash
-pnpm --filter @zapp/webos inspect
+pnpm --filter @zapp/webos run inspect-tv
 ```
 
 ## Particularités de la version TV
@@ -41,4 +41,4 @@ pnpm --filter @zapp/webos inspect
 - `disableBackHistoryAPI` : la touche Retour de la télécommande arrive à l'app (keyCode 461) au lieu de fermer l'app
 - Les icônes viennent de `scripts/make-icons.cjs` (un « Z » blanc sur fond Graphite)
 
-Points à vérifier sur la vraie TV : voir le commentaire de l'issue #19.
+Points à vérifier sur la vraie TV : voir l'issue #48.

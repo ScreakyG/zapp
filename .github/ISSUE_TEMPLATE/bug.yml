@@ -1,6 +1,6 @@
 name: Bug
 description: Quelque chose ne marche pas
-labels: ["type:bug"]
+labels: ['type:bug']
 body:
   - type: dropdown
     id: platform

@@ -59,7 +59,13 @@ describe('DemoSource', () => {
 });
 
 describe('epg helpers', () => {
-  const program: Program = { channelId: 'c', title: 'a', start: minutes(-60), end: minutes(60), live: false };
+  const program: Program = {
+    channelId: 'c',
+    title: 'a',
+    start: minutes(-60),
+    end: minutes(60),
+    live: false,
+  };
   const next: Program = { ...program, title: 'b', start: minutes(60), end: minutes(120) };
 
   it('treats programs as half-open intervals', () => {

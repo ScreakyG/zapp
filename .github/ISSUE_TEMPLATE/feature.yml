@@ -1,6 +1,6 @@
 name: Fonctionnalité
 description: Nouvelle fonctionnalité ou tâche
-labels: ["type:feat"]
+labels: ['type:feat']
 body:
   - type: textarea
     id: goal

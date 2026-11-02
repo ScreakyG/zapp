@@ -8,7 +8,9 @@ import { THEMES, nextTheme } from './themes';
 
 const color = (name: string, theme: string): string => {
   const token = tokens.color.tokens.find((t) => t.name === name)!;
-  return typeof token.value === 'string' ? token.value : (token.value as Record<string, string>)[theme]!;
+  return typeof token.value === 'string'
+    ? token.value
+    : (token.value as Record<string, string>)[theme]!;
 };
 
 describe('themes', () => {
@@ -58,9 +60,13 @@ describe('stageZoom', () => {
 
 // The app loads tokens.css; the tests above read tokens.json. Both must agree.
 describe('tokens.css', () => {
-  const css = readFileSync(fileURLToPath(new URL('../../../../design/tokens.css', import.meta.url)), 'utf8');
+  const css = readFileSync(
+    fileURLToPath(new URL('../../../../design/tokens.css', import.meta.url)),
+    'utf8',
+  );
   const block = (theme: string) => {
-    const selector = theme === 'graphite' ? ':root, [data-theme="graphite"]' : `[data-theme="${theme}"]`;
+    const selector =
+      theme === 'graphite' ? ':root, [data-theme="graphite"]' : `[data-theme="${theme}"]`;
     const start = css.indexOf(`${selector} {`);
     return css.slice(start, css.indexOf('}', start));
   };

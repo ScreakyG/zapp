@@ -1,4 +1,12 @@
-import { batch, createMemo, createSignal, onCleanup, type Accessor } from 'solid-js';
+import {
+  batch,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  untrack,
+  type Accessor,
+} from 'solid-js';
 import {
   CATEGORIES,
   DemoSource,
@@ -156,11 +164,27 @@ export function createApp(source = new DemoSource()) {
         })),
       );
     });
+    await loadPrograms(list);
+  };
+
+  // A channel whose EPG fails simply shows no program; it must not blank the others.
+  let programsUntil = 0;
+  const loadPrograms = async (list: Channel[]) => {
     const from = new Date(Date.now() - PROGRAM_SPAN);
     const to = new Date(Date.now() + PROGRAM_SPAN);
-    const loaded = await Promise.all(list.map((c) => source.getPrograms(c, from, to)));
+    programsUntil = to.getTime();
+    const loaded = await Promise.all(
+      list.map((c) => source.getPrograms(c, from, to).catch((): Program[] => [])),
+    );
     setPrograms(new Map(list.map((c, i) => [c.id, loaded[i] ?? []])));
   };
+
+  // Slide the window before it runs out. TODO(#15): incremental refresh through the EPG cache.
+  createEffect(() => {
+    if (programsUntil && now() > programsUntil - PROGRAM_SPAN / 2) {
+      void loadPrograms(untrack(channels));
+    }
+  });
 
   /** What a channel airs now, for tiles and the banner. */
   const onAir = (channel: number): OnAir => {
@@ -170,7 +194,7 @@ export function createApp(source = new DemoSource()) {
     const program = programAt(list, at);
     return {
       program,
-      next: program ? list[list.indexOf(program) + 1] : undefined,
+      next: program ? list.find((p) => p.start >= program.end) : undefined,
       progress: program ? progress(program, at) : 0,
     };
   };
@@ -192,7 +216,7 @@ export function createApp(source = new DemoSource()) {
     clearTimeout(bannerTimer);
     zapper.cancel();
   });
-  void load();
+  load().catch((error: unknown) => console.error('Loading channels failed', error));
 
   return { channels, homeRows, programs, onAir, nav: view, now, banner, zap, mosaicChannels };
 }

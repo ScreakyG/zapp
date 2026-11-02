@@ -1,6 +1,39 @@
+/*
+ * Focus only animates transform and opacity, which the TV composites without repainting:
+ * the lifted shadow fades in on a pseudo-element and the dimming is a black overlay
+ * (opacity 1 - focus-dim ≈ brightness(focus-dim)).
+ */
 .tile {
   width: 272px;
   flex: none;
+}
+
+.tile-lift {
+  position: relative;
+  border-radius: var(--radius-lg);
+  will-change: transform;
+  transition: transform var(--focus-duration) var(--focus-easing);
+}
+
+.tile-lift::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+  opacity: 0;
+  transition: opacity var(--focus-duration) var(--focus-easing);
+}
+
+.tile.focused .tile-lift {
+  transform: translateY(var(--focus-lift)) scale(var(--focus-scale));
+}
+
+.tile.focused .tile-lift::before {
+  opacity: 1;
 }
 
 .tile-media {
@@ -11,17 +44,6 @@
   overflow: hidden;
   background: var(--surface-raised);
   box-shadow: var(--shadow-rest);
-  filter: brightness(var(--focus-dim));
-  transition:
-    transform var(--focus-duration) var(--focus-easing),
-    box-shadow var(--focus-duration) var(--focus-easing),
-    filter var(--focus-duration) var(--focus-easing);
-}
-
-.tile.focused .tile-media {
-  transform: translateY(var(--focus-lift)) scale(var(--focus-scale));
-  box-shadow: var(--shadow-lift);
-  filter: none;
 }
 
 .tile-image {
@@ -31,13 +53,28 @@
   object-fit: cover;
 }
 
-/* Diagonal highlight on the focused tile (135°, 28 % → 0 at 42 %). */
-.tile-sheen {
+.tile-dim,
+.tile-sheen,
+.tile-edge {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
+}
+
+.tile-dim {
+  background: #000;
+  opacity: calc(1 - var(--focus-dim));
+  transition: opacity var(--focus-duration) var(--focus-easing);
+}
+
+.tile.focused .tile-dim {
+  opacity: 0;
+}
+
+/* Diagonal highlight on the focused tile (135°, 28 % → 0 at 42 %). */
+.tile-sheen {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 42%);
   opacity: 0;
   transition: opacity var(--focus-duration) var(--focus-easing);
@@ -49,11 +86,6 @@
 
 /* 1px inner edge that lifts the tile off dark backgrounds. */
 .tile-edge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
   border-radius: var(--radius-lg);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
@@ -100,6 +132,10 @@
 .tile-name {
   color: var(--ink-muted);
   transition: color var(--focus-duration) var(--focus-easing);
+}
+
+.tile-number {
+  margin-right: var(--space-xs);
 }
 
 .tile.focused .tile-name {

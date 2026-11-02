@@ -44,11 +44,17 @@ export function Mosaic(props: { app: App }) {
         <For each={MOSAIC_FILTERS}>
           {(chip, i) => (
             <span
-              {...pointerTo(props.app, (s) => ({
-                ...s,
-                zone: 'chips',
-                mosaic: { filter: i(), idx: s.mosaic.filter === i() ? s.mosaic.idx : 0 },
-              }))}
+              {...pointerTo(
+                props.app,
+                // Hovering only reaches the chips: crossing them on the way to the TabBar must
+                // not change the filter. A click picks it.
+                (s) => ({ ...s, zone: 'chips' }),
+                (s) => ({
+                  ...s,
+                  zone: 'chips',
+                  mosaic: { filter: i(), idx: s.mosaic.filter === i() ? s.mosaic.idx : 0 },
+                }),
+              )}
               class="chip label"
               classList={{
                 selected: filter() === i(),

@@ -11,13 +11,17 @@ export interface PointerHandlers {
  * focuses it and presses OK. `target` derives the navigation state where it has the focus.
  * Empty on the TV, where only the remote drives the UI.
  */
-export function pointerTo(app: App, target: (state: NavState) => NavState): PointerHandlers {
+export function pointerTo(
+  app: App,
+  target: (state: NavState) => NavState,
+  /** What a click selects, when it differs from hovering (mosaic filters). */
+  clickTarget: (state: NavState) => NavState = target,
+): PointerHandlers {
   if (!app.pointer) return {};
   return {
-    // mousemove rather than mouseenter: a row sliding under a still cursor does not steal focus.
     onMouseMove: () => app.point(target),
     onClick: () => {
-      app.point(target);
+      app.point(clickTarget, { click: true });
       app.press('ok');
     },
   };

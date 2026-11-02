@@ -43,7 +43,10 @@ export function TextEntry(props: TextEntryProps) {
    */
   let physical = false;
 
-  const release = props.app.captureKeys((e) => {
+  const release = props.app.captureKeys(handleKey, { modal: true });
+  onCleanup(release);
+
+  function handleKey(e: KeyboardEvent): boolean {
     // Arrows and OK drive the on-screen keys; anything printable is typed directly.
     const action = toAction(e);
     // Ctrl/Cmd shortcuts are not characters; AltGr (Ctrl+Alt on Windows) still types @ # { [ |.
@@ -68,8 +71,7 @@ export function TextEntry(props: TextEntryProps) {
     if (e.repeat && action === 'ok') return true;
     finish(keyboardAction(state(), action));
     return true;
-  });
-  onCleanup(release);
+  }
 
   const shown = () => (props.secret ? '•'.repeat(state().value.length) : state().value);
 

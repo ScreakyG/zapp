@@ -244,6 +244,8 @@ export function Settings(props: { app: App }) {
                       if (!editing()) setFocus(i());
                     },
                     onClick: () => {
+                      // From the TabBar, the row must take the focus before OK reaches it.
+                      props.app.point((s) => ({ ...s, zone: 'content' }), { click: true });
                       setFocus(i());
                       props.app.press('ok');
                     },

@@ -58,6 +58,36 @@ export interface HomeRowView {
   channels: number[];
 }
 
+const HOVER_PAUSE = 300;
+const WHEEL_STEP = 50;
+
+function changed(a: NavState, b: NavState): boolean {
+  return (
+    a.screen !== b.screen ||
+    a.zone !== b.zone ||
+    a.menuIdx !== b.menuIdx ||
+    a.home.row !== b.home.row ||
+    a.home.cols[a.home.row] !== b.home.cols[b.home.row] ||
+    a.guide.row !== b.guide.row ||
+    a.guide.prog !== b.guide.prog ||
+    a.mosaic.filter !== b.mosaic.filter ||
+    a.mosaic.idx !== b.mosaic.idx
+  );
+}
+
+/** Whether moving the focus from a to b slides a row, the rows or a grid. */
+function scrolls(a: NavState, b: NavState): boolean {
+  const homeCol = (s: NavState) => Math.max(0, (s.home.cols[s.home.row] ?? 0) - 2);
+  const guideOffset = (s: NavState) => Math.max(0, s.guide.row - 3);
+  const mosaicRow = (s: NavState) => Math.floor(s.mosaic.idx / MOSAIC_COLUMNS);
+  return (
+    a.home.row !== b.home.row ||
+    homeCol(a) !== homeCol(b) ||
+    guideOffset(a) !== guideOffset(b) ||
+    mosaicRow(a) !== mosaicRow(b)
+  );
+}
+
 const ACTION_KEYS = {
   up: 'ArrowUp',
   down: 'ArrowDown',
@@ -229,11 +259,18 @@ export function createApp(options: AppOptions = {}) {
    * key through.
    */
   const captures: ((e: KeyboardEvent) => boolean)[] = [];
-  const captureKeys = (handler: (e: KeyboardEvent) => boolean) => {
+  /** Captures that cover the screen (text entry): the pointer cannot reach what is under them. */
+  const modals = new Set<(e: KeyboardEvent) => boolean>();
+  const captureKeys = (
+    handler: (e: KeyboardEvent) => boolean,
+    options: { modal?: boolean } = {},
+  ) => {
     captures.push(handler);
+    if (options.modal) modals.add(handler);
     return () => {
       const i = captures.indexOf(handler);
       if (i >= 0) captures.splice(i, 1);
+      modals.delete(handler);
     };
   };
 
@@ -392,24 +429,43 @@ export function createApp(options: AppOptions = {}) {
   const press = (action: Exclude<Action, { digit: number }>) =>
     onKey(new KeyboardEvent('keydown', { key: ACTION_KEYS[action], cancelable: true }));
 
-  /** Hovering an element focuses it: `target` derives the state where it has the focus. */
-  const point = (target: (state: NavState) => NavState) => {
-    if (captures.length > 0) return;
-    const next = target(nav());
-    if (JSON.stringify(next) !== JSON.stringify(nav())) apply({ state: next, effects: [] });
+  /**
+   * Hovering an element focuses it: `target` derives the state where it has the focus. A focus
+   * change that scrolls a row or the grid pauses hovering until the slide ends, or the element
+   * sliding under a still cursor would take the focus, scroll again, and so on.
+   */
+  let hoverPausedUntil = 0;
+  const point = (target: (state: NavState) => NavState, options: { click?: boolean } = {}) => {
+    if (modals.size > 0) return;
+    if (!options.click && Date.now() < hoverPausedUntil) return;
+    const prev = nav();
+    const next = target(prev);
+    if (!changed(prev, next)) return;
+    if (!options.click && scrolls(prev, next)) hoverPausedUntil = Date.now() + HOVER_PAUSE;
+    apply({ state: next, effects: [] });
   };
 
   // The TV is driven by its remote only (the issue asks for no pointer effect there).
   const pointer = options.pointer ?? !/web0s|webos/i.test(navigator.userAgent);
-  let lastWheel = 0;
+  // Wheel and trackpad: deltas are summed and one step is taken per WHEEL_STEP pixels, so a
+  // mouse notch (lines or pixels) moves once and a trackpad flick does not run away.
+  let wheelX = 0;
+  let wheelY = 0;
+  let wheelReset: ReturnType<typeof setTimeout> | undefined;
   const onWheel = (e: WheelEvent) => {
-    const now = Date.now();
-    // One step per notch, however fast the wheel or trackpad reports.
-    if (now - lastWheel < 120 || (Math.abs(e.deltaX) < 4 && Math.abs(e.deltaY) < 4)) return;
-    lastWheel = now;
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
-      press((e.deltaX || e.deltaY) > 0 ? 'right' : 'left');
-    } else press(e.deltaY > 0 ? 'down' : 'up');
+    const scale = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1;
+    const horizontal = e.shiftKey ? e.deltaY : e.deltaX;
+    wheelX += horizontal * scale;
+    wheelY += (e.shiftKey ? 0 : e.deltaY) * scale;
+    clearTimeout(wheelReset);
+    wheelReset = setTimeout(() => (wheelX = wheelY = 0), 200);
+    if (Math.abs(wheelX) >= WHEEL_STEP) {
+      press(wheelX > 0 ? 'right' : 'left');
+      wheelX = 0;
+    } else if (Math.abs(wheelY) >= WHEEL_STEP) {
+      press(wheelY > 0 ? 'down' : 'up');
+      wheelY = 0;
+    }
   };
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -438,6 +494,7 @@ export function createApp(options: AppOptions = {}) {
   onCleanup(() => {
     window.removeEventListener('keydown', onKey);
     window.removeEventListener('wheel', onWheel);
+    clearTimeout(wheelReset);
     window.removeEventListener('contextmenu', onContextMenu);
     window.removeEventListener('mouseup', onMouseUp);
     clearTimeout(firstTick);

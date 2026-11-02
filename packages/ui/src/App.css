@@ -5,3 +5,14 @@
 .accent {
   color: var(--accent-text);
 }
+
+/* Clickable with the mouse on PC (#21). */
+.tile,
+.chip,
+.tabbar-tab,
+.tabbar-gear,
+.guide-program,
+.settings-row,
+.entry-key {
+  cursor: pointer;
+}

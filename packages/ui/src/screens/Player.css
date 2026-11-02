@@ -1,0 +1,29 @@
+.player,
+.player-video,
+.player-poster {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  height: 720px;
+}
+
+.player {
+  background: #000;
+}
+
+.player-video,
+.player-poster {
+  object-fit: cover;
+}
+
+/* Slow drift on the stand-in picture so a stream-less demo channel still feels alive. */
+.player-poster {
+  animation: player-drift 24s ease-in-out infinite alternate;
+}
+
+@keyframes player-drift {
+  to {
+    transform: scale(1.08) translate(-1.5%, -1%);
+  }
+}

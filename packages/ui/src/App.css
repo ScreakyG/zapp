@@ -20,30 +20,3 @@
 .placeholder p {
   margin: 0 0 var(--space-sm);
 }
-
-.player-placeholder {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background: #000;
-}
-
-.banner-placeholder {
-  position: absolute;
-  left: var(--space-safe);
-  right: var(--space-safe);
-  bottom: 48px;
-  display: flex;
-  align-items: center;
-  padding: 20px 24px;
-  border-radius: var(--radius-xl);
-  background: var(--scrim);
-  backdrop-filter: blur(var(--blur-panel)) saturate(1.8);
-  box-shadow: var(--shadow-panel);
-}
-
-.banner-placeholder > * + * {
-  margin-left: var(--space-md);
-}

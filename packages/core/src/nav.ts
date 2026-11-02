@@ -133,7 +133,8 @@ export function openPlayer(state: NavState, channel: number): NavResult {
 
 /**
  * First digit of a number zap: show the player (and its banner, where the digits appear) from
- * any screen, still on the current channel until the number is committed.
+ * any screen, still on the current channel until the number is committed. Leaving the player
+ * must also `cancel()` the NumberZapper.
  */
 export function startZapping(state: NavState): NavResult {
   const next: NavState =

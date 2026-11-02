@@ -10,6 +10,7 @@
 @import '@fontsource/inter/latin-800.css';
 @import '@fontsource/inter/latin-ext-800.css';
 @import '../../../../design/tokens.css';
+@import './theme-rgb.css';
 
 *,
 *::before,

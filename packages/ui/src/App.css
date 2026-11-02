@@ -21,17 +21,6 @@
   margin: 0 0 var(--space-sm);
 }
 
-.tile-row-preview {
-  position: absolute;
-  top: 420px;
-  left: var(--space-safe);
-  display: flex;
-}
-
-.tile-row-preview > * + * {
-  margin-left: var(--space-lg);
-}
-
 .player-placeholder {
   position: absolute;
   top: 0;

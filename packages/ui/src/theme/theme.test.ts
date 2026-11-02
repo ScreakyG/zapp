@@ -58,6 +58,21 @@ describe('stageZoom', () => {
   });
 });
 
+describe('theme-rgb.css', () => {
+  const css = readFileSync(
+    fileURLToPath(new URL('../styles/theme-rgb.css', import.meta.url)),
+    'utf8',
+  );
+  for (const theme of THEMES) {
+    it(`${theme} --bg-rgb matches bg`, () => {
+      const start = css.indexOf(`[data-theme='${theme}']`);
+      const value = /--bg-rgb: ([^;]+);/.exec(css.slice(start))![1];
+      const n = parseInt(color('bg', theme).slice(1), 16);
+      expect(value).toBe(`${n >> 16}, ${(n >> 8) & 0xff}, ${n & 0xff}`);
+    });
+  }
+});
+
 // The app loads tokens.css; the tests above read tokens.json. Both must agree.
 describe('tokens.css', () => {
   const css = readFileSync(

@@ -16,6 +16,13 @@ describe('categorize', () => {
     expect(categorize('')).toBe('divert');
   });
 
+  it('avoids known false positives', () => {
+    expect(categorize('IT | SERIE A')).toBe('divert');
+    expect(categorize('GEORGIA')).toBe('divert');
+    expect(categorize('FR | SÉRIES')).toBe('cinema');
+    expect(categorize('National Geo')).toBe('info');
+  });
+
   it('matches at word starts only', () => {
     expect(categorize('Transport TV')).toBe('divert');
   });
@@ -36,5 +43,11 @@ describe('keepGroup', () => {
     expect(keepGroup('FR | SPORTS', ['fr'])).toBe(true);
     expect(keepGroup('UK | NEWS', ['FR', 'BE'])).toBe(false);
     expect(keepGroup('Belgique', ['belgique'])).toBe(true);
+  });
+
+  it('matches whole words', () => {
+    expect(keepGroup('AFRICA', ['FR'])).toBe(false);
+    expect(keepGroup('UKRAINE', ['UK'])).toBe(false);
+    expect(keepGroup('FR | SPORTS HD', ['fr sports'])).toBe(true);
   });
 });

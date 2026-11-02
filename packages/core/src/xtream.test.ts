@@ -136,6 +136,114 @@ describe('XtreamSource', () => {
   });
 });
 
+describe('XtreamSource robustness', () => {
+  const reply = (body: string, status = 200) =>
+    (async () => new Response(body, { status })) as typeof fetch;
+
+  it('refuses auth given as a string, a missing auth and HTTP 401', async () => {
+    for (const fetch of [
+      reply('{"user_info":{"auth":"0"}}'),
+      reply('{"user_info":{"status":"Active"}}'),
+      reply('', 401),
+    ]) {
+      await expect(new XtreamSource({ ...config, fetch }).account()).rejects.toThrow(
+        'Identifiants refusés',
+      );
+    }
+  });
+
+  it('accepts auth "1", translates statuses and ignores a zero expiry', async () => {
+    const ok = new XtreamSource({
+      ...config,
+      fetch: reply('{"user_info":{"auth":"1","exp_date":"0"}}'),
+    });
+    expect((await ok.account()).expires).toBeUndefined();
+    const expired = reply('{"user_info":{"auth":1,"status":"Expired"}}');
+    await expect(new XtreamSource({ ...config, fetch: expired }).account()).rejects.toThrow(
+      'Abonnement expiré',
+    );
+  });
+
+  it('turns an HTML page into a readable error', async () => {
+    const source = new XtreamSource({ ...config, fetch: reply('<html>Bad gateway</html>') });
+    await expect(source.account()).rejects.toThrow('Réponse du serveur illisible');
+  });
+
+  it('treats non-list answers as empty', async () => {
+    const source = new XtreamSource({ ...config, fetch: reply('{}') });
+    expect(await source.getChannels()).toEqual([]);
+  });
+
+  it('prefers the full day table and falls back to the short EPG', async () => {
+    const calls: string[] = [];
+    const day = {
+      epg_listings: [
+        {
+          title: b64('Le 20 h'),
+          start_timestamp: t('2026-11-02T19:00:00Z'),
+          stop_timestamp: t('2026-11-02T19:30:00Z'),
+        },
+      ],
+    };
+    const fetch = (async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      calls.push(url.searchParams.get('action') ?? '');
+      const action = url.searchParams.get('action');
+      if (action === 'get_simple_data_table') return new Response(JSON.stringify(day));
+      return new Response(JSON.stringify(fixtures[action ?? '']));
+    }) as typeof globalThis.fetch;
+    const source = new XtreamSource({ ...config, fetch });
+    const [stade] = await source.getChannels();
+    const all = await source.getPrograms(stade!, new Date(0), new Date('2030-01-01'));
+    expect(all.map((p) => p.title)).toEqual(['Le 20 h']);
+    expect(calls).not.toContain('get_short_epg');
+
+    const empty = new XtreamSource({
+      ...config,
+      fetch: (async (input: RequestInfo | URL) => {
+        const action = new URL(String(input)).searchParams.get('action') ?? '';
+        if (action === 'get_simple_data_table') return new Response('{"epg_listings":[]}');
+        return new Response(JSON.stringify(fixtures[action]));
+      }) as typeof globalThis.fetch,
+    });
+    const [s2] = await empty.getChannels();
+    expect((await empty.getPrograms(s2!, new Date(0), new Date('2030-01-01'))).length).toBe(2);
+  });
+
+  it('shares one request per channel and does not cache failures', async () => {
+    let epgCalls = 0;
+    let fail = true;
+    const fetch = (async (input: RequestInfo | URL) => {
+      const action = new URL(String(input)).searchParams.get('action') ?? '';
+      if (action.startsWith('get_s')) {
+        epgCalls++;
+        if (fail) return new Response('', { status: 500 });
+      }
+      return new Response(JSON.stringify(fixtures[action]));
+    }) as typeof globalThis.fetch;
+    const source = new XtreamSource({ ...config, fetch });
+    const [stade] = await source.getChannels();
+    const window = [new Date(0), new Date('2030-01-01')] as const;
+    await expect(
+      Promise.all([source.getPrograms(stade!, ...window), source.getPrograms(stade!, ...window)]),
+    ).rejects.toThrow();
+    // Day table failed (swallowed) then short EPG failed: one shared attempt for both calls.
+    expect(epgCalls).toBe(2);
+    fail = false;
+    expect((await source.getPrograms(stade!, ...window)).length).toBe(2);
+  });
+
+  it('rejects an aborted request', async () => {
+    const source = new XtreamSource({ ...config, fetch: fakeFetch([]) });
+    const [stade] = await source.getChannels();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      source.getPrograms(stade!, new Date(0), new Date(), controller.signal),
+    ).rejects.toThrow('Aborted');
+  });
+});
+
 describe('helpers', () => {
   it('numbers channels from num, avoiding duplicates', () => {
     const c = (rawNumber: number | null) => ({

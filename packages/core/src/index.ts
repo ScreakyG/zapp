@@ -7,4 +7,7 @@ export * from './nav';
 export * from './categories';
 export * from './xtream';
 export * from './m3u';
+export * from './m3u-source';
+export * from './xmltv';
+export * from './epg-cache';
 export * from './zap';

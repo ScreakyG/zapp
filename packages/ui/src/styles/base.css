@@ -1,0 +1,40 @@
+/* Latin subsets only: the UI is French. */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-ext-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-ext-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-ext-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/inter/latin-ext-700.css';
+@import '@fontsource/inter/latin-800.css';
+@import '@fontsource/inter/latin-ext-800.css';
+@import '../../../../design/tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fixed canvas, sized and zoomed by Stage.tsx. */
+.stage {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--bg);
+}

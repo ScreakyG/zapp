@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount } from 'solid-js';
+import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
 import { toAction } from '@zapp/core';
 import { Stage } from './Stage';
 import { DEFAULT_THEME, applyTheme, nextTheme, type Theme } from './theme/themes';
@@ -8,14 +8,13 @@ import './App.css';
 export function App() {
   const [theme, setTheme] = createSignal<Theme>(DEFAULT_THEME);
 
+  createEffect(() => applyTheme(theme()));
+
   onMount(() => {
-    applyTheme(theme());
     const onKey = (e: KeyboardEvent) => {
       const action = toAction(e);
       if (action === 'left' || action === 'right') {
-        const t = nextTheme(theme(), action === 'right' ? 1 : -1);
-        setTheme(t);
-        applyTheme(t);
+        setTheme(nextTheme(theme(), action === 'right' ? 1 : -1));
       }
     };
     window.addEventListener('keydown', onKey);

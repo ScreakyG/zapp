@@ -5,6 +5,7 @@ export function contrastRatio(a: string, b: string): number {
 }
 
 function luminance(hex: string): number {
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) throw new Error(`Expected #rrggbb, got ${hex}`);
   const n = parseInt(hex.slice(1), 16);
   const [r, g, b] = [n >> 16, (n >> 8) & 0xff, n & 0xff].map((c) => {
     const s = c / 255;

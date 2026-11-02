@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import tokens from '../../../../design/tokens.json';
 import { contrastRatio } from './contrast';
@@ -48,4 +50,27 @@ describe('stageZoom', () => {
     expect(stageZoom(1920, 1200)).toBe(1.5);
     expect(stageZoom(2560, 1080)).toBe(1.5);
   });
+
+  it('shrinks in a window smaller than the canvas', () => {
+    expect(stageZoom(960, 540)).toBe(0.75);
+  });
+});
+
+// The app loads tokens.css; the tests above read tokens.json. Both must agree.
+describe('tokens.css', () => {
+  const css = readFileSync(fileURLToPath(new URL('../../../../design/tokens.css', import.meta.url)), 'utf8');
+  const block = (theme: string) => {
+    const selector = theme === 'graphite' ? ':root, [data-theme="graphite"]' : `[data-theme="${theme}"]`;
+    const start = css.indexOf(`${selector} {`);
+    return css.slice(start, css.indexOf('}', start));
+  };
+
+  for (const theme of THEMES) {
+    it(`${theme} matches tokens.json`, () => {
+      const body = block(theme);
+      for (const token of tokens.color.tokens) {
+        expect(body, token.name).toContain(`--${token.name}: ${color(token.name, theme)};`);
+      }
+    });
+  }
 });

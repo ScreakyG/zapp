@@ -16,6 +16,9 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        env:
+          # The Electron binary (~100 MB) is not needed to lint, test and build.
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck

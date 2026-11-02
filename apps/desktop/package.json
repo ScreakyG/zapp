@@ -1,0 +1,40 @@
+{
+  "name": "@zapp/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zapp pour PC",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "pnpm --filter @zapp/ui build && electron .",
+    "dev": "cross-env ZAPP_DEV_URL=http://localhost:5173 electron .",
+    "dist": "pnpm --filter @zapp/ui build && electron-builder --win",
+    "smoke": "pnpm --filter @zapp/ui build && electron smoke.cjs"
+  },
+  "build": {
+    "appId": "dev.zapp.desktop",
+    "productName": "Zapp",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      {
+        "from": "../../packages/ui/dist",
+        "to": "ui"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
+  }
+}

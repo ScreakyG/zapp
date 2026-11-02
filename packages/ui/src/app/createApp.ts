@@ -56,8 +56,15 @@ export interface HomeRowView {
   channels: number[];
 }
 
+/** Nothing done yet: on Home, first row, first tile. */
+function isInitial(s: NavState): boolean {
+  return (
+    s.screen === 'home' && s.zone === 'content' && s.home.row === 0 && !s.home.cols.some(Boolean)
+  );
+}
+
 /** A source, optionally with curated home rows (the demo has some). */
-type AppSource = Source & { homeRows?: () => HomeRowSpec[] };
+export type AppSource = Source & { homeRows?: () => HomeRowSpec[] };
 
 const HALF_HOUR = 1_800_000;
 export const GUIDE_SPAN = 4 * HALF_HOUR;
@@ -81,8 +88,8 @@ export interface ZapView {
 export interface AppOptions {
   settings?: Settings;
   secrets?: SecretStore;
-  /** Fixed source (tests); otherwise built from the settings. */
-  source?: AppSource;
+  /** Builds the source from the settings (overridden in tests). */
+  buildSource?: (settings: Settings, secrets: SecretStore) => Promise<AppSource>;
   /** Persist settings changes (off in tests). */
   persist?: boolean;
 }
@@ -95,12 +102,18 @@ export function createApp(options: AppOptions = {}) {
   const secrets = options.secrets ?? defaultSecretStore();
   const [settings, setSettings] = createSignal<Settings>(options.settings ?? loadSettings());
   const updateSettings = (patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch }));
-  createEffect(() => applyTheme(settings().theme));
+  createEffect(
+    on(
+      () => settings().theme,
+      (theme) => applyTheme(theme),
+    ),
+  );
   if (options.persist ?? true) {
     createEffect(on(settings, (s) => saveSettings(s), { defer: true }));
   }
 
-  let source: AppSource = options.source ?? new DemoSource();
+  const makeSource = options.buildSource ?? buildSource;
+  let source: AppSource = new DemoSource();
   /** Why the configured source could not be loaded, for the settings screen. */
   const [loadError, setLoadError] = createSignal<string>();
   const [loading, setLoading] = createSignal(false);
@@ -230,8 +243,7 @@ export function createApp(options: AppOptions = {}) {
       setLoadError(undefined);
     });
     try {
-      if (!options.source) source = await buildSource(settings(), secrets);
-      await load(mine);
+      await load(mine, await makeSource(settings(), secrets));
     } catch (error) {
       if (mine !== generation) return;
       console.error('Loading channels failed', error);
@@ -241,9 +253,12 @@ export function createApp(options: AppOptions = {}) {
     }
   };
 
-  const load = async (mine: number) => {
-    const list = await source.getChannels();
+  const load = async (mine: number, next: AppSource) => {
+    const list = await next.getChannels();
     if (mine !== generation) return;
+    // Only now that it works: a failed reload keeps the previous source and channels.
+    source = next;
+    const first = !resumed;
     const index = new Map(list.map((c, i) => [c.id, i]));
     const showRows = (specs: HomeRowSpec[]) =>
       setHomeRows(
@@ -258,14 +273,17 @@ export function createApp(options: AppOptions = {}) {
     const curated = source.homeRows?.();
     const favourites = settings().favourites;
     batch(() => {
+      setPrograms(new Map());
       setChannels(list);
       showRows(curated ?? buildHomeRows(list, () => false, favourites));
-      // Like a TV: start on the channel watched last.
+      // Indices of the previous list mean nothing in the new one: start over.
+      if (!first) setNav(initialNav(ctx()));
+      // Like a TV: start on the channel watched last, unless the user already moved.
       const last = list.findIndex((c) => c.id === settings().lastChannel);
-      if (!resumed && last >= 0) apply(openPlayer(nav(), last));
+      if (first && last >= 0 && isInitial(nav())) apply(openPlayer(nav(), last));
       resumed = true;
     });
-    await loadPrograms(list);
+    await loadPrograms(list, mine);
     if (mine !== generation) return;
     if (!curated) {
       showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false, favourites));
@@ -274,20 +292,23 @@ export function createApp(options: AppOptions = {}) {
 
   // A channel whose EPG fails simply shows no program; it must not blank the others.
   let programsUntil = 0;
-  const loadPrograms = async (list: Channel[]) => {
+  const loadPrograms = async (list: Channel[], mine: number) => {
     const from = new Date(Date.now() - PROGRAM_SPAN);
     const to = new Date(Date.now() + PROGRAM_SPAN);
     programsUntil = to.getTime();
+    const epgSource = source;
     const loaded = await Promise.all(
-      list.map((c) => source.getPrograms(c, from, to).catch((): Program[] => [])),
+      list.map((c) => epgSource.getPrograms(c, from, to).catch((): Program[] => [])),
     );
+    // A reload started meanwhile: these programs belong to the previous source.
+    if (mine !== generation) return;
     setPrograms(new Map(list.map((c, i) => [c.id, loaded[i] ?? []])));
   };
 
   // Slide the window before it runs out. TODO(#15): incremental refresh through the EPG cache.
   createEffect(() => {
     if (programsUntil && now() > programsUntil - PROGRAM_SPAN / 2) {
-      void loadPrograms(untrack(channels));
+      void loadPrograms(untrack(channels), generation);
     }
   });
 

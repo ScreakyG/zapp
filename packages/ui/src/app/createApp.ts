@@ -1,4 +1,12 @@
-import { batch, createMemo, createSignal, onCleanup, type Accessor } from 'solid-js';
+import {
+  batch,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  untrack,
+  type Accessor,
+} from 'solid-js';
 import {
   CATEGORIES,
   DemoSource,
@@ -8,9 +16,12 @@ import {
   navigate,
   normalize,
   openPlayer,
+  programAt,
+  progress,
   startZapping,
   toAction,
   type Channel,
+  type Program,
   type Effect,
   type NavContext,
   type NavState,
@@ -30,6 +41,15 @@ export interface HomeRowView {
   channels: number[];
 }
 
+/** Hours of programs loaded on each side of now. */
+const PROGRAM_SPAN = 6 * 3_600_000;
+
+export interface OnAir {
+  program?: Program;
+  next?: Program;
+  progress: number;
+}
+
 export interface ZapView {
   /** Buffer being typed, '' when idle. */
   typed: string;
@@ -47,6 +67,8 @@ export function createApp(source = new DemoSource()) {
   const [now, setNow] = createSignal(Date.now());
   const [banner, setBanner] = createSignal(false);
   const [zap, setZap] = createSignal<ZapView>({ typed: '', error: false });
+  /** Programs per channel id around now (EPG cache comes with #15). */
+  const [programs, setPrograms] = createSignal<Map<string, Program[]>>(new Map());
 
   const mosaicChannels = (filter: number) => {
     const id = MOSAIC_FILTERS[filter]?.id;
@@ -142,6 +164,39 @@ export function createApp(source = new DemoSource()) {
         })),
       );
     });
+    await loadPrograms(list);
+  };
+
+  // A channel whose EPG fails simply shows no program; it must not blank the others.
+  let programsUntil = 0;
+  const loadPrograms = async (list: Channel[]) => {
+    const from = new Date(Date.now() - PROGRAM_SPAN);
+    const to = new Date(Date.now() + PROGRAM_SPAN);
+    programsUntil = to.getTime();
+    const loaded = await Promise.all(
+      list.map((c) => source.getPrograms(c, from, to).catch((): Program[] => [])),
+    );
+    setPrograms(new Map(list.map((c, i) => [c.id, loaded[i] ?? []])));
+  };
+
+  // Slide the window before it runs out. TODO(#15): incremental refresh through the EPG cache.
+  createEffect(() => {
+    if (programsUntil && now() > programsUntil - PROGRAM_SPAN / 2) {
+      void loadPrograms(untrack(channels));
+    }
+  });
+
+  /** What a channel airs now, for tiles and the banner. */
+  const onAir = (channel: number): OnAir => {
+    const c = channels()[channel];
+    const list = c ? (programs().get(c.id) ?? []) : [];
+    const at = new Date(now());
+    const program = programAt(list, at);
+    return {
+      program,
+      next: program ? list.find((p) => p.start >= program.end) : undefined,
+      progress: program ? progress(program, at) : 0,
+    };
   };
 
   window.addEventListener('keydown', onKey);
@@ -161,9 +216,9 @@ export function createApp(source = new DemoSource()) {
     clearTimeout(bannerTimer);
     zapper.cancel();
   });
-  void load();
+  load().catch((error: unknown) => console.error('Loading channels failed', error));
 
-  return { channels, homeRows, nav: view, now, banner, zap, mosaicChannels };
+  return { channels, homeRows, programs, onAir, nav: view, now, banner, zap, mosaicChannels };
 }
 
 export type App = ReturnType<typeof createApp>;

@@ -5,6 +5,7 @@ import { createApp } from './app/createApp';
 import { TabBar } from './components/TabBar';
 import { Guide } from './screens/Guide';
 import { Home } from './screens/Home';
+import { Mosaic } from './screens/Mosaic';
 import { DEFAULT_THEME, applyTheme } from './theme/themes';
 import './App.css';
 
@@ -24,7 +25,7 @@ export function App() {
           <Guide app={app} />
         </Match>
         <Match when={nav().screen === 'mosaic'}>
-          <Placeholder title="Mosaïque" issue="#9" />
+          <Mosaic app={app} />
         </Match>
         <Match when={nav().screen === 'settings'}>
           <Placeholder title="Paramètres" issue="#18" />

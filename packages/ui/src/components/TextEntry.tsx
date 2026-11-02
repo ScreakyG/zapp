@@ -90,6 +90,15 @@ export function TextEntry(props: TextEntryProps) {
                 <For each={row}>
                   {(key, c) => (
                     <span
+                      {...(props.app.pointer
+                        ? {
+                            onMouseMove: () => setState((s) => ({ ...s, row: r(), col: c() })),
+                            onClick: () => {
+                              setState((s) => ({ ...s, row: r(), col: c() }));
+                              props.app.press('ok');
+                            },
+                          }
+                        : {})}
                       class="entry-key label"
                       classList={{
                         focused: state().row === r() && state().col === c(),

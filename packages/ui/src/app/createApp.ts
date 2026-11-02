@@ -27,6 +27,7 @@ import {
   reanchorGuide,
   startZapping,
   toAction,
+  type Action,
   type Channel,
   type Program,
   type Effect,
@@ -56,6 +57,15 @@ export interface HomeRowView {
   title: string;
   channels: number[];
 }
+
+const ACTION_KEYS = {
+  up: 'ArrowUp',
+  down: 'ArrowDown',
+  left: 'ArrowLeft',
+  right: 'ArrowRight',
+  ok: 'Enter',
+  back: 'Escape',
+} as const;
 
 /** Nothing done yet: on Home, first row, first tile. */
 function isInitial(s: NavState): boolean {
@@ -93,6 +103,8 @@ export interface AppOptions {
   buildSource?: (settings: Settings, secrets: SecretStore) => Promise<AppSource>;
   /** Persist settings changes (off in tests). */
   persist?: boolean;
+  /** Mouse support; defaults to everything but webOS. */
+  pointer?: boolean;
 }
 
 /**
@@ -372,7 +384,48 @@ export function createApp(options: AppOptions = {}) {
     };
   };
 
+  /**
+   * Mouse and pointer input (#21) go through the same path as the remote: a pointer action is
+   * replayed as the key that would have done it, so text entries and screens that capture keys
+   * see it too.
+   */
+  const press = (action: Exclude<Action, { digit: number }>) =>
+    onKey(new KeyboardEvent('keydown', { key: ACTION_KEYS[action], cancelable: true }));
+
+  /** Hovering an element focuses it: `target` derives the state where it has the focus. */
+  const point = (target: (state: NavState) => NavState) => {
+    if (captures.length > 0) return;
+    const next = target(nav());
+    if (JSON.stringify(next) !== JSON.stringify(nav())) apply({ state: next, effects: [] });
+  };
+
+  // The TV is driven by its remote only (the issue asks for no pointer effect there).
+  const pointer = options.pointer ?? !/web0s|webos/i.test(navigator.userAgent);
+  let lastWheel = 0;
+  const onWheel = (e: WheelEvent) => {
+    const now = Date.now();
+    // One step per notch, however fast the wheel or trackpad reports.
+    if (now - lastWheel < 120 || (Math.abs(e.deltaX) < 4 && Math.abs(e.deltaY) < 4)) return;
+    lastWheel = now;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey) {
+      press((e.deltaX || e.deltaY) > 0 ? 'right' : 'left');
+    } else press(e.deltaY > 0 ? 'down' : 'up');
+  };
+  const onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    press('back');
+  };
+  // The mouse's "previous" side button.
+  const onMouseUp = (e: MouseEvent) => {
+    if (e.button === 3) press('back');
+  };
+
   window.addEventListener('keydown', onKey);
+  if (pointer) {
+    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('contextmenu', onContextMenu);
+    window.addEventListener('mouseup', onMouseUp);
+  }
   // Tick on minute boundaries so the clock never shows the previous minute.
   let clock: ReturnType<typeof setInterval> | undefined;
   const firstTick = setTimeout(
@@ -384,6 +437,9 @@ export function createApp(options: AppOptions = {}) {
   );
   onCleanup(() => {
     window.removeEventListener('keydown', onKey);
+    window.removeEventListener('wheel', onWheel);
+    window.removeEventListener('contextmenu', onContextMenu);
+    window.removeEventListener('mouseup', onMouseUp);
     clearTimeout(firstTick);
     clearInterval(clock);
     clearTimeout(bannerTimer);
@@ -398,6 +454,10 @@ export function createApp(options: AppOptions = {}) {
     reload,
     programsLoaded: () => programsLoaded,
     captureKeys,
+    /** Whether the mouse drives the UI (PC); screens add hover and click handlers then. */
+    pointer,
+    press,
+    point,
     /** Moves the focus up to the TabBar entry of the current screen (settings: the gear). */
     focusMenu: () =>
       apply({

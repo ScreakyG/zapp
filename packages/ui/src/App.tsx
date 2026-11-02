@@ -3,6 +3,7 @@ import { formatTyped } from '@zapp/core';
 import { Stage } from './Stage';
 import { createApp } from './app/createApp';
 import { TabBar } from './components/TabBar';
+import { Guide } from './screens/Guide';
 import { Home } from './screens/Home';
 import { DEFAULT_THEME, applyTheme } from './theme/themes';
 import './App.css';
@@ -20,7 +21,7 @@ export function App() {
           <Home app={app} />
         </Match>
         <Match when={nav().screen === 'guide'}>
-          <Placeholder title="Guide TV" issue="#8" />
+          <Guide app={app} />
         </Match>
         <Match when={nav().screen === 'mosaic'}>
           <Placeholder title="Mosaïque" issue="#9" />

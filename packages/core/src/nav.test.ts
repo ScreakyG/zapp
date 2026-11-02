@@ -106,6 +106,17 @@ describe('guide', () => {
   const g = (row: number, prog: number, time = 52): NavState =>
     on({ screen: 'guide', guide: { row, prog, time } });
 
+  it('entering from the tab lands on the program at the targeted time', () => {
+    // Initial state was built before programs loaded: prog 0 is stale, time is now (52).
+    const stale = on({ zone: 'menu', menuIdx: 1, guide: { row: 2, prog: 0, time: 52 } });
+    expect(press(stale, 'ok').guide).toEqual({ row: 2, prog: 1, time: 52 });
+  });
+
+  it('a target behind the window start falls back to now', () => {
+    const old = on({ zone: 'menu', menuIdx: 1, guide: { row: 0, prog: 0, time: -500 } });
+    expect(press(old, 'ok').guide).toEqual({ row: 0, prog: 1, time: 52 });
+  });
+
   it('starts on the program airing now', () => {
     expect(start.guide).toEqual({ row: 0, prog: 1, time: 52 });
   });

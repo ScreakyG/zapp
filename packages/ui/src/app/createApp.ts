@@ -19,6 +19,7 @@ import {
   navigate,
   normalize,
   openPlayer,
+  overlaps,
   programAt,
   progress,
   startZapping,
@@ -46,6 +47,9 @@ export interface HomeRowView {
 
 /** A source, optionally with curated home rows (the demo has some). */
 type AppSource = Source & { homeRows?: () => HomeRowSpec[] };
+
+const HALF_HOUR = 1_800_000;
+export const GUIDE_SPAN = 4 * HALF_HOUR;
 
 /** Hours of programs loaded on each side of now. */
 const PROGRAM_SPAN = 6 * 3_600_000;
@@ -81,13 +85,24 @@ export function createApp(source: AppSource = new DemoSource()) {
     return channels().flatMap((c, i) => (!id || c.category === id ? [i] : []));
   };
 
+  /** Guide window: 2 h, starting 30 to 60 min before now so recent programs stay in view. */
+  const guideStart = createMemo(() => Math.floor((now() - HALF_HOUR) / HALF_HOUR) * HALF_HOUR);
+  /** Programs of each channel (one guide row per channel) overlapping the guide window. */
+  const guideRows = createMemo(() => {
+    const from = new Date(guideStart());
+    const to = new Date(guideStart() + GUIDE_SPAN);
+    return channels().map((c) => (programs().get(c.id) ?? []).filter((p) => overlaps(p, from, to)));
+  });
+  const guideSpans = createMemo(() =>
+    guideRows().map((row) => row.map((p) => ({ start: p.start.getTime(), end: p.end.getTime() }))),
+  );
+
   const ctx: Accessor<NavContext> = createMemo(() => ({
     now: now(),
     channelCount: channels().length,
     homeRows: homeRows().map((r) => r.channels),
-    // Filled in by the guide screen (#8).
-    guidePrograms: () => [],
-    guideWindowStart: now(),
+    guidePrograms: (row: number) => guideSpans()[row] ?? [],
+    guideWindowStart: guideStart(),
     mosaicFilterCount: MOSAIC_FILTERS.length,
     mosaicColumns: MOSAIC_COLUMNS,
     mosaicChannels,
@@ -231,7 +246,19 @@ export function createApp(source: AppSource = new DemoSource()) {
   });
   load().catch((error: unknown) => console.error('Loading channels failed', error));
 
-  return { channels, homeRows, programs, onAir, nav: view, now, banner, zap, mosaicChannels };
+  return {
+    channels,
+    homeRows,
+    programs,
+    onAir,
+    guideStart,
+    guideRows,
+    nav: view,
+    now,
+    banner,
+    zap,
+    mosaicChannels,
+  };
 }
 
 export type App = ReturnType<typeof createApp>;

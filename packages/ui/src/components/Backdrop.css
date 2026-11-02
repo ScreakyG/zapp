@@ -1,0 +1,14 @@
+.backdrop-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  height: 720px;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 400ms ease-out;
+}
+
+.backdrop-layer.visible {
+  opacity: 1;
+}

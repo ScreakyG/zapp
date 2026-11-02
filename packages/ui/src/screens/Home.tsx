@@ -1,6 +1,7 @@
 import { For, Show, createMemo } from 'solid-js';
 import { minutesLeft } from '@zapp/core';
 import type { App } from '../app/createApp';
+import { Backdrop } from '../components/Backdrop';
 import { ChannelTileOf } from '../components/ChannelTileOf';
 import { LiveBadge } from '../components/LiveBadge';
 import { formatTime } from '../format';
@@ -32,9 +33,7 @@ export function Home(props: { app: App }) {
 
   return (
     <div class="home">
-      <Show when={imageUrl(channel()?.image)} keyed>
-        {(src) => <img class="home-hero-image" src={src} alt="" />}
-      </Show>
+      <Backdrop src={imageUrl(channel()?.image)} />
       <div class="home-shade" />
 
       <Show when={channel()}>

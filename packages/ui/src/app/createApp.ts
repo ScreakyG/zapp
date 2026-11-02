@@ -160,19 +160,24 @@ export function createApp(source: AppSource = new DemoSource()) {
 
   const load = async () => {
     const list = await source.getChannels();
-    setChannels(list);
-    await loadPrograms(list);
-    // Curated rows when the source has them (demo), otherwise built from categories and EPG.
-    const specs =
-      source.homeRows?.() ??
-      buildHomeRows(list, (c) => onAir(list.indexOf(c)).program?.live ?? false);
     const index = new Map(list.map((c, i) => [c.id, i]));
-    setHomeRows(
-      specs.map((r) => ({
-        title: r.title,
-        channels: r.channels.flatMap((id) => index.get(id) ?? []),
-      })),
-    );
+    const showRows = (specs: HomeRowSpec[]) =>
+      setHomeRows(
+        specs.map((r) => ({
+          title: r.title,
+          channels: r.channels.flatMap((id) => index.get(id) ?? []),
+        })),
+      );
+    // Curated rows when the source has them (demo). Otherwise show the category rows at once,
+    // then add "En direct maintenant" once the EPG says what is live.
+    // TODO(#15): refresh the live row as programs change, keeping the focus clamped.
+    const curated = source.homeRows?.();
+    batch(() => {
+      setChannels(list);
+      showRows(curated ?? buildHomeRows(list, () => false));
+    });
+    await loadPrograms(list);
+    if (!curated) showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false));
   };
 
   // A channel whose EPG fails simply shows no program; it must not blank the others.

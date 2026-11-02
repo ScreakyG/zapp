@@ -29,6 +29,20 @@ describe('buildHomeRows', () => {
     expect(rows.map((r) => r.title)).toEqual(['Toutes les chaînes']);
   });
 
+  it('lets a channel appear in several rows and passes list indices', () => {
+    const seen: number[] = [];
+    const rows = buildHomeRows(
+      [channel('a', 'sport')],
+      (_, i) => {
+        seen.push(i);
+        return true;
+      },
+      ['a'],
+    );
+    expect(rows.map((r) => r.channels)).toEqual([['a'], ['a'], ['a'], ['a']]);
+    expect(seen).toEqual([0]);
+  });
+
   it('returns nothing without channels', () => {
     expect(buildHomeRows([], () => true)).toEqual([]);
   });

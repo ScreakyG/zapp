@@ -12,7 +12,8 @@ export interface HomeRowSpec {
  */
 export function buildHomeRows(
   channels: readonly Channel[],
-  isLiveNow: (channel: Channel) => boolean,
+  /** Called with the channel's list index, so callers can look up per-index data in O(1). */
+  isLiveNow: (channel: Channel, index: number) => boolean,
   favourites: readonly string[] = [],
 ): HomeRowSpec[] {
   const ids = (list: readonly Channel[]) => list.map((c) => c.id);
@@ -20,7 +21,7 @@ export function buildHomeRows(
   const rows: HomeRowSpec[] = [
     { title: 'Chaînes favorites', channels: favourites.filter((id) => known.has(id)) },
     { title: 'Sport', channels: ids(channels.filter((c) => c.category === 'sport')) },
-    { title: 'En direct maintenant', channels: ids(channels.filter(isLiveNow)) },
+    { title: 'En direct maintenant', channels: ids(channels.filter((c, i) => isLiveNow(c, i))) },
     { title: 'Cinéma et séries', channels: ids(channels.filter((c) => c.category === 'cinema')) },
     { title: 'Toutes les chaînes', channels: ids(channels) },
   ];

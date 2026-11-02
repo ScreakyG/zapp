@@ -22,7 +22,7 @@ export function ChannelTile(props: ChannelTileProps) {
       <div class="tile-lift">
         <div class="tile-media">
           <Show when={props.image}>
-            <img class="tile-image" src={props.image} alt="" />
+            <img class="tile-image" src={props.image} alt="" loading="lazy" decoding="async" />
           </Show>
           <div class="tile-dim" />
           <div class="tile-sheen" />

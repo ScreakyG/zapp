@@ -66,6 +66,7 @@ describe('theme-rgb.css', () => {
   for (const theme of THEMES) {
     it(`${theme} --bg-rgb matches bg`, () => {
       const start = css.indexOf(`[data-theme='${theme}']`);
+      expect(start, `selector for ${theme}`).toBeGreaterThanOrEqual(0);
       const value = /--bg-rgb: ([^;]+);/.exec(css.slice(start))![1];
       const n = parseInt(color('bg', theme).slice(1), 16);
       expect(value).toBe(`${n >> 16}, ${(n >> 8) & 0xff}, ${n & 0xff}`);

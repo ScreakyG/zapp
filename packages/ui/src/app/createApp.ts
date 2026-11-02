@@ -210,14 +210,32 @@ export function createApp(options: AppOptions = {}) {
     },
   });
 
+  /**
+   * A text entry open on screen takes the keys (digits, Back, a physical keyboard) instead of
+   * the navigation and the zapper. Returns true when it handled the key.
+   */
+  const captures: ((e: KeyboardEvent) => boolean)[] = [];
+  const captureKeys = (handler: (e: KeyboardEvent) => boolean) => {
+    captures.push(handler);
+    return () => {
+      const i = captures.indexOf(handler);
+      if (i >= 0) captures.splice(i, 1);
+    };
+  };
+
   const onKey = (e: KeyboardEvent) => {
+    // The latest entry opened has the keys; closing it gives them back to the previous one.
+    const capture = captures[captures.length - 1];
+    if (capture) {
+      if (capture(e)) e.preventDefault();
+      return;
+    }
     const action = toAction(e);
     if (!action) return;
     e.preventDefault();
     // Holding an arrow keeps moving; holding a digit, OK or Back must not repeat it.
     if (e.repeat && (typeof action === 'object' || action === 'ok' || action === 'back')) return;
     setNow(Date.now());
-    // TODO(#17/#18): route digits to the focused text field instead of the zapper in settings.
     if (typeof action === 'object') {
       apply(startZapping(nav()));
       zapper.press(action.digit);
@@ -349,6 +367,7 @@ export function createApp(options: AppOptions = {}) {
     updateSettings,
     secrets,
     reload,
+    captureKeys,
     loading,
     loadError,
     channels,

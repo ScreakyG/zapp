@@ -1,0 +1,101 @@
+.entry {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  background: rgba(var(--bg-rgb), 0.6);
+  animation: entry-in var(--focus-duration) ease-out;
+}
+
+@keyframes entry-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.entry-panel {
+  position: absolute;
+  left: 160px;
+  right: 160px;
+  bottom: var(--space-lg);
+  padding: var(--space-md);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+}
+
+.entry-field {
+  margin: var(--space-xs) 0 var(--space-md);
+  padding: 12px var(--space-sm);
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* An rtl box clips on the left, keeping the end of long URLs in view; the text inside stays ltr. */
+.entry-value {
+  overflow: hidden;
+  direction: rtl;
+}
+
+.entry-caret {
+  flex: none;
+  width: 2px;
+  height: 26px;
+  margin-left: 2px;
+  background: var(--accent);
+  animation: entry-blink 1s steps(1) infinite;
+}
+
+@keyframes entry-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.entry-row {
+  display: flex;
+}
+
+.entry-row + .entry-row {
+  margin-top: var(--space-xs);
+}
+
+.entry-key {
+  flex: none;
+  height: 52px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: 20px;
+  transition:
+    background var(--focus-duration) var(--focus-easing),
+    transform var(--focus-duration) var(--focus-easing);
+}
+
+.entry-key.special {
+  color: var(--ink-muted);
+  font-size: 16px;
+}
+
+.entry-key.focused {
+  background: var(--accent);
+  color: var(--on-accent);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-pill);
+}
+
+.entry-help {
+  margin-top: var(--space-sm);
+}

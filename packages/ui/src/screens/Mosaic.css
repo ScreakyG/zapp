@@ -1,0 +1,70 @@
+.mosaic {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.mosaic-chips {
+  position: absolute;
+  top: 112px;
+  left: var(--space-safe);
+  right: var(--space-safe);
+  display: flex;
+}
+
+.mosaic-chips > * + * {
+  margin-left: 10px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
+  background: var(--glass);
+  color: var(--ink-muted);
+  transition:
+    background var(--focus-duration) var(--focus-easing),
+    color var(--focus-duration) var(--focus-easing),
+    transform var(--focus-duration) var(--focus-easing);
+}
+
+.chip.selected {
+  background: var(--glass-strong);
+  color: var(--ink);
+}
+
+.chip.focused {
+  background: var(--accent);
+  color: var(--on-accent);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-pill);
+}
+
+.chip-count {
+  margin-left: var(--space-xs);
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.mosaic-grid {
+  position: absolute;
+  top: 168px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.mosaic-track {
+  position: relative;
+  top: var(--space-sm);
+  left: var(--space-safe);
+  transition: transform var(--focus-duration) var(--focus-easing);
+}
+
+.mosaic-cell {
+  position: absolute;
+}

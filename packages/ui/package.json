@@ -11,6 +11,8 @@
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
     "@zapp/core": "workspace:*",
+    "hls.js": "^1.7.4",
+    "mpegts.js": "^1.8.2",
     "solid-js": "^1.9.5"
   },
   "devDependencies": {

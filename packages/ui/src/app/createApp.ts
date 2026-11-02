@@ -10,6 +10,9 @@ import {
 import {
   CATEGORIES,
   DemoSource,
+  buildHomeRows,
+  type HomeRowSpec,
+  type Source,
   NumberZapper,
   findChannelByNumber,
   initialNav,
@@ -41,6 +44,9 @@ export interface HomeRowView {
   channels: number[];
 }
 
+/** A source, optionally with curated home rows (the demo has some). */
+type AppSource = Source & { homeRows?: () => HomeRowSpec[] };
+
 /** Hours of programs loaded on each side of now. */
 const PROGRAM_SPAN = 6 * 3_600_000;
 
@@ -61,7 +67,7 @@ export interface ZapView {
  * App state: the channel list, the navigation state machine wired to the keyboard / remote, the
  * number zapper and the player banner. Screens only read from it.
  */
-export function createApp(source = new DemoSource()) {
+export function createApp(source: AppSource = new DemoSource()) {
   const [channels, setChannels] = createSignal<Channel[]>([]);
   const [homeRows, setHomeRows] = createSignal<HomeRowView[]>([]);
   const [now, setNow] = createSignal(Date.now());
@@ -155,16 +161,23 @@ export function createApp(source = new DemoSource()) {
   const load = async () => {
     const list = await source.getChannels();
     const index = new Map(list.map((c, i) => [c.id, i]));
-    batch(() => {
-      setChannels(list);
+    const showRows = (specs: HomeRowSpec[]) =>
       setHomeRows(
-        source.homeRows().map((r) => ({
+        specs.map((r) => ({
           title: r.title,
           channels: r.channels.flatMap((id) => index.get(id) ?? []),
         })),
       );
+    // Curated rows when the source has them (demo). Otherwise show the category rows at once,
+    // then add "En direct maintenant" once the EPG says what is live.
+    // TODO(#15): refresh the live row as programs change, keeping the focus clamped.
+    const curated = source.homeRows?.();
+    batch(() => {
+      setChannels(list);
+      showRows(curated ?? buildHomeRows(list, () => false));
     });
     await loadPrograms(list);
+    if (!curated) showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false));
   };
 
   // A channel whose EPG fails simply shows no program; it must not blank the others.

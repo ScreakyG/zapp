@@ -1,0 +1,21 @@
+/*
+ * `bg` as an "r, g, b" triplet, for the translucent gradients over images (rgba(var(--bg-rgb), a)).
+ * Chromium 79 has no color-mix(), so it is spelled out per theme; a test keeps it equal to
+ * tokens.json.
+ */
+:root,
+[data-theme='graphite'] {
+  --bg-rgb: 11, 11, 13;
+}
+
+[data-theme='phosphore'] {
+  --bg-rgb: 13, 14, 16;
+}
+
+[data-theme='ambre'] {
+  --bg-rgb: 18, 14, 10;
+}
+
+[data-theme='lagon'] {
+  --bg-rgb: 7, 18, 20;
+}

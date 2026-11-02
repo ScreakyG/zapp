@@ -53,6 +53,14 @@ describe('keyboardAction', () => {
     expect(press({ ...symbols, row: 1, col: 0 }, 'ok').value).toBe(':');
   });
 
+  it('offers the symbols found in provider passwords', () => {
+    const labels = keyboardLayout('symbols')
+      .flat()
+      .map((k) => k.label)
+      .join('');
+    for (const c of "$*'^|@:/?=&%#") expect(labels).toContain(c);
+  });
+
   it('has shortcuts, space and delete', () => {
     const s = press({ ...initialKeyboard(), row: 3, col: 2 }, 'ok', 'right', 'ok', 'right', 'ok');
     expect(s.value).toBe('http://.com ');

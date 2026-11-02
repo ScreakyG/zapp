@@ -214,15 +214,18 @@ export function createApp(options: AppOptions = {}) {
    * A text entry open on screen takes the keys (digits, Back, a physical keyboard) instead of
    * the navigation and the zapper. Returns true when it handled the key.
    */
-  let capture: ((e: KeyboardEvent) => boolean) | undefined;
+  const captures: ((e: KeyboardEvent) => boolean)[] = [];
   const captureKeys = (handler: (e: KeyboardEvent) => boolean) => {
-    capture = handler;
+    captures.push(handler);
     return () => {
-      if (capture === handler) capture = undefined;
+      const i = captures.indexOf(handler);
+      if (i >= 0) captures.splice(i, 1);
     };
   };
 
   const onKey = (e: KeyboardEvent) => {
+    // The latest entry opened has the keys; closing it gives them back to the previous one.
+    const capture = captures[captures.length - 1];
     if (capture) {
       if (capture(e)) e.preventDefault();
       return;

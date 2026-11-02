@@ -46,7 +46,8 @@ export function TextEntry(props: TextEntryProps) {
   const release = props.app.captureKeys((e) => {
     // Arrows and OK drive the on-screen keys; anything printable is typed directly.
     const action = toAction(e);
-    const printable = e.key.length === 1;
+    // Ctrl/Cmd shortcuts are not characters; AltGr (Ctrl+Alt on Windows) still types @ # { [ |.
+    const printable = e.key.length === 1 && !e.metaKey && !(e.ctrlKey && !e.altKey);
     // Digits may come from the remote; any other printable key means a physical keyboard.
     if (printable && !(action && typeof action === 'object')) physical = true;
     if (
@@ -62,6 +63,8 @@ export function TextEntry(props: TextEntryProps) {
       }
     }
     if (!action) return false;
+    // Back on the arrows: the remote is in use again, so OK presses keys.
+    if (typeof action === 'string' && action !== 'ok' && action !== 'back') physical = false;
     if (e.repeat && action === 'ok') return true;
     finish(keyboardAction(state(), action));
     return true;
@@ -75,7 +78,9 @@ export function TextEntry(props: TextEntryProps) {
       <div class="entry-panel">
         <div class="entry-label label muted">{props.label}</div>
         <div class="entry-field body">
-          <span class="entry-value">{shown()}</span>
+          <span class="entry-value">
+            <span dir="ltr">{shown()}</span>
+          </span>
           <span class="entry-caret" />
         </div>
         <div class="entry-keys">

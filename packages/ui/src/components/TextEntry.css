@@ -39,11 +39,10 @@
   white-space: nowrap;
 }
 
+/* An rtl box clips on the left, keeping the end of long URLs in view; the text inside stays ltr. */
 .entry-value {
   overflow: hidden;
-  text-overflow: ellipsis;
-  direction: rtl; /* Keep the end of long URLs in view. */
-  unicode-bidi: plaintext;
+  direction: rtl;
 }
 
 .entry-caret {

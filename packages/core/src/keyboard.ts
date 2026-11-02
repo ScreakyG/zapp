@@ -29,7 +29,7 @@ const bottomRow = (mode: KeyboardMode): KeyDef[] => [
 
 export function keyboardLayout(mode: KeyboardMode): KeyDef[][] {
   if (mode === 'symbols') {
-    return [chars('1234567890'), chars(':/?=&%#+~!'), chars('.-_@,;()[]'), bottomRow(mode)];
+    return [chars('1234567890'), chars(':/?=&%#+$!'), chars(".-_@,;*'^|"), bottomRow(mode)];
   }
   const rows = ['azertyuiop', 'qsdfghjklm', 'wxcvbn.-_@'];
   return [...rows.map((r) => chars(mode === 'upper' ? r.toUpperCase() : r)), bottomRow(mode)];

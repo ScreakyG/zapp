@@ -10,6 +10,9 @@ const DEV_URL = process.env.ZAPP_DEV_URL;
 /** Many IPTV panels only serve players they know; VLC's is the most widely accepted. */
 const USER_AGENT = process.env.ZAPP_USER_AGENT || 'VLC/3.0.20 LibVLC/3.0.20';
 
+// Every request (fetch, XHR of hls.js/mpegts.js, the native <video>) and navigator.userAgent.
+app.userAgentFallback = USER_AGENT;
+
 function uiEntry() {
   // Packaged: copied next to this file by electron-builder. Unpackaged: the UI build output.
   const packaged = path.join(__dirname, 'ui', 'index.html');
@@ -18,19 +21,16 @@ function uiEntry() {
     : path.join(__dirname, '..', '..', 'packages', 'ui', 'dist', 'index.html');
 }
 
+/** The app's own pages: the packaged UI, or the dev server. */
+function isOwn(url) {
+  return url.startsWith('file://') || (!!DEV_URL && url.startsWith(DEV_URL));
+}
+
 function allowIptvRequests() {
   const iptv = { urls: ['http://*/*', 'https://*/*'] };
-  // The app's own pages (dev server) are left alone.
-  const own = (url) => DEV_URL && url.startsWith(DEV_URL);
-
-  session.defaultSession.webRequest.onBeforeSendHeaders(iptv, (details, callback) => {
-    if (own(details.url)) return callback({ requestHeaders: details.requestHeaders });
-    callback({ requestHeaders: { ...details.requestHeaders, 'User-Agent': USER_AGENT } });
-  });
-
   // Providers send no CORS headers: add them, rather than turning web security off.
   session.defaultSession.webRequest.onHeadersReceived(iptv, (details, callback) => {
-    if (own(details.url)) return callback({ responseHeaders: details.responseHeaders });
+    if (isOwn(details.url)) return callback({ responseHeaders: details.responseHeaders });
     const headers = { ...details.responseHeaders };
     for (const name of Object.keys(headers)) {
       if (name.toLowerCase().startsWith('access-control-')) delete headers[name];
@@ -38,8 +38,18 @@ function allowIptvRequests() {
     headers['Access-Control-Allow-Origin'] = ['*'];
     headers['Access-Control-Allow-Headers'] = ['*'];
     headers['Access-Control-Allow-Methods'] = ['GET, HEAD, OPTIONS'];
+    // Range loaders read Content-Range and friends.
+    headers['Access-Control-Expose-Headers'] = ['*'];
+    // A preflight only passes with a 2xx status, and many IPTV servers reject OPTIONS.
+    if (details.method === 'OPTIONS') {
+      return callback({ responseHeaders: headers, statusLine: 'HTTP/1.1 204 No Content' });
+    }
     callback({ responseHeaders: headers });
   });
+  // The UI needs no camera, microphone, notifications…
+  session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) =>
+    callback(false),
+  );
 }
 
 /** Secrets file: { name: base64 of the safeStorage-encrypted value }. */
@@ -49,35 +59,71 @@ function secretsFile() {
 
 function readSecrets() {
   try {
-    return JSON.parse(fs.readFileSync(secretsFile(), 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(secretsFile(), 'utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
     return {};
   }
 }
 
+/** Atomic write: a crash never leaves a half-written file that would read as "no secrets". */
+function writeSecrets(secrets) {
+  const file = secretsFile();
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(`${file}.tmp`, JSON.stringify(secrets));
+  fs.renameSync(`${file}.tmp`, file);
+}
+
+/** Writes run one after another so overlapping sets never lose an update. */
+let writes = Promise.resolve();
+function queueWrite(update) {
+  const next = writes.then(update);
+  writes = next.catch(() => {});
+  return next;
+}
+
+function fromOwnPage(event) {
+  return isOwn(event.senderFrame?.url ?? '');
+}
+
+function setSecret(name, value) {
+  return queueWrite(async () => {
+    const clear = value === undefined || value === null || value === '';
+    let encrypted;
+    if (!clear) {
+      if (!(await safeStorage.isAsyncEncryptionAvailable())) {
+        throw new Error('Chiffrement indisponible');
+      }
+      encrypted = (await safeStorage.encryptStringAsync(String(value))).toString('base64');
+    }
+    // Read after the await so a write queued meanwhile is not overwritten.
+    const secrets = readSecrets();
+    if (clear) delete secrets[name];
+    else secrets[name] = encrypted;
+    writeSecrets(secrets);
+  });
+}
+
 function handleSecrets() {
-  ipcMain.handle('secrets:get', async (_event, name) => {
-    const stored = readSecrets()[name];
-    if (!stored || !(await safeStorage.isAsyncEncryptionAvailable())) return undefined;
+  ipcMain.handle('secrets:get', async (event, name) => {
+    if (!fromOwnPage(event) || typeof name !== 'string') return undefined;
+    const secrets = readSecrets();
+    if (!Object.hasOwn(secrets, name) || !(await safeStorage.isAsyncEncryptionAvailable())) {
+      return undefined;
+    }
     try {
-      const { result } = await safeStorage.decryptStringAsync(Buffer.from(stored, 'base64'));
+      const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(
+        Buffer.from(secrets[name], 'base64'),
+      );
+      if (shouldReEncrypt) void setSecret(name, result).catch(() => {});
       return result;
     } catch {
       return undefined;
     }
   });
-  ipcMain.handle('secrets:set', async (_event, name, value) => {
-    const secrets = readSecrets();
-    if (value === undefined || value === null || value === '') {
-      delete secrets[name];
-    } else {
-      if (!(await safeStorage.isAsyncEncryptionAvailable())) {
-        throw new Error('Chiffrement indisponible');
-      }
-      secrets[name] = (await safeStorage.encryptStringAsync(String(value))).toString('base64');
-    }
-    fs.mkdirSync(path.dirname(secretsFile()), { recursive: true });
-    fs.writeFileSync(secretsFile(), JSON.stringify(secrets), { mode: 0o600 });
+  ipcMain.handle('secrets:set', async (event, name, value) => {
+    if (!fromOwnPage(event) || typeof name !== 'string') return;
+    await setSecret(name, value);
   });
 }
 
@@ -104,7 +150,10 @@ function createWindow() {
       event.preventDefault();
     }
   });
-  // External links never open inside the app.
+  // The window only ever shows the app: the preload hands secrets to whatever page it holds.
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!isOwn(url)) event.preventDefault();
+  });
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   if (DEV_URL) void win.loadURL(DEV_URL);
   else void win.loadFile(uiEntry());

@@ -7,20 +7,28 @@
   left: 0;
 }
 
-/* Blurred picture of the focused channel, oversized so the blur has no faded edges. */
+/*
+ * Blurred picture of the focused channel. Blurring a full-size layer every frame of the
+ * cross-fade is too costly for the TV: the picture is drawn at a quarter size with a quarter
+ * of the blur, then scaled up 4x (only transform/opacity reach the compositor afterwards).
+ * Oversized by 80 px on each side so the blur has no faded edges.
+ */
 .guide-backdrop {
   position: absolute;
   top: -80px;
   left: -80px;
-  width: 1440px;
-  height: 880px;
+  width: 360px;
+  height: 220px;
   overflow: hidden;
-  filter: blur(var(--blur-backdrop)) saturate(1.4);
+  transform: scale(4);
+  transform-origin: 0 0;
 }
 
 .guide-backdrop .backdrop-layer {
-  width: 1440px;
-  height: 880px;
+  width: 360px;
+  height: 220px;
+  filter: blur(calc(var(--blur-backdrop) / 4)) saturate(1.4);
+  will-change: opacity;
 }
 
 .guide-veil {
@@ -50,8 +58,17 @@
   font-weight: 400;
 }
 
-.guide-detail-status .accent {
+.guide-detail-state {
   font-weight: 600;
+  color: var(--ink);
+}
+
+.guide-detail-state.accent {
+  color: var(--accent-text);
+}
+
+.guide-detail-number {
+  margin-right: var(--space-xs);
 }
 
 .guide-marks {
@@ -76,12 +93,15 @@
 }
 
 .guide-track {
-  padding-top: 6px;
+  position: relative;
+  top: 6px;
   transition: transform var(--focus-duration) var(--focus-easing);
 }
 
 .guide-row {
-  position: relative;
+  position: absolute;
+  left: 0;
+  right: 0;
   height: 64px;
   margin-bottom: var(--space-xs);
 }

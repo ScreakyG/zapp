@@ -167,7 +167,14 @@ function player(state: NavState, action: Nav, ctx: NavContext): NavResult {
  * behind by the sliding window (or never set) falls back to now.
  */
 function enterGuide(state: NavState, ctx: NavContext): NavState {
-  if (state.screen !== 'guide') return state;
+  return state.screen === 'guide' ? reanchorGuide(state, ctx) : state;
+}
+
+/**
+ * Re-derives the focused guide program from the targeted time. Call it when the guide window
+ * slides (programs drop out on the left, shifting indices) so the focus stays on the same show.
+ */
+export function reanchorGuide(state: NavState, ctx: NavContext): NavState {
   const time = state.guide.time < ctx.guideWindowStart ? ctx.now : state.guide.time;
   const prog = programIndexAt(ctx.guidePrograms(state.guide.row), time);
   return { ...state, guide: { row: state.guide.row, prog, time } };

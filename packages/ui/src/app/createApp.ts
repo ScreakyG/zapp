@@ -3,6 +3,7 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  on,
   onCleanup,
   untrack,
   type Accessor,
@@ -22,6 +23,7 @@ import {
   overlaps,
   programAt,
   progress,
+  reanchorGuide,
   startZapping,
   toAction,
   type Channel,
@@ -111,6 +113,14 @@ export function createApp(source: AppSource = new DemoSource()) {
   const [nav, setNav] = createSignal<NavState>(initialNav(ctx()));
   /** What screens render: the navigation state with indices clamped to the current content. */
   const view = createMemo(() => normalize(nav(), ctx()));
+
+  // Guide rows changed (window slid, EPG reloaded): indices shifted, keep focus on the same show.
+  createEffect(
+    on(guideSpans, () => setNav((s) => reanchorGuide(s, untrack(ctx))), { defer: true }),
+  );
+
+  /** Now, to the minute: what screens display, so a keypress does not re-render every cell. */
+  const minute = createMemo(() => Math.floor(now() / 60_000) * 60_000);
 
   let bannerTimer: ReturnType<typeof setTimeout> | undefined;
   const showBanner = () => {
@@ -218,7 +228,7 @@ export function createApp(source: AppSource = new DemoSource()) {
   const onAir = (channel: number): OnAir => {
     const c = channels()[channel];
     const list = c ? (programs().get(c.id) ?? []) : [];
-    const at = new Date(now());
+    const at = new Date(minute());
     const program = programAt(list, at);
     return {
       program,
@@ -254,7 +264,7 @@ export function createApp(source: AppSource = new DemoSource()) {
     guideStart,
     guideRows,
     nav: view,
-    now,
+    now: minute,
     banner,
     zap,
     mosaicChannels,

@@ -1,4 +1,4 @@
-import { For, Index, Show, createMemo } from 'solid-js';
+import { For, Index, Show, createMemo, createSelector } from 'solid-js';
 import { minutesLeft, minutesUntil, status, type Program } from '@zapp/core';
 import { GUIDE_SPAN, type App } from '../app/createApp';
 import { Backdrop } from '../components/Backdrop';
@@ -24,10 +24,11 @@ export function Guide(props: { app: App }) {
   const nav = () => props.app.nav();
   const start = () => props.app.guideStart();
   const at = () => new Date(props.app.now());
-  const minutesFromStart = (t: Date) => (t.getTime() - start()) / MINUTE;
-  const x = (t: Date) =>
-    CHANNEL_CELL +
-    Math.round(Math.max(0, Math.min(GUIDE_SPAN / MINUTE, minutesFromStart(t))) * PX_PER_MIN);
+  const x = (t: Date) => {
+    const minutes = (t.getTime() - start()) / MINUTE;
+    const clipped = Math.max(0, Math.min(GUIDE_SPAN / MINUTE, minutes));
+    return CHANNEL_CELL + Math.round(clipped * PX_PER_MIN);
+  };
 
   const channel = () => props.app.channels()[nav().guide.row];
   const focusedProgram = createMemo(
@@ -35,7 +36,19 @@ export function Guide(props: { app: App }) {
   );
   const offset = () =>
     Math.max(0, Math.min(nav().guide.row - FOCUS_SLOT, props.app.channels().length - VISIBLE_ROWS));
+  /** Only the rows in view (plus one on each side for the scroll) are in the DOM. */
+  const visibleRows = createMemo(() => {
+    const first = Math.max(0, offset() - 1);
+    const last = Math.min(props.app.channels().length, offset() + VISIBLE_ROWS + 1);
+    return Array.from({ length: Math.max(0, last - first) }, (_, i) => first + i);
+  });
+
+  // Only the cells whose focus changes update on a key press.
   const inGrid = () => nav().zone === 'content';
+  const isFocusedRow = createSelector(() => (inGrid() ? nav().guide.row : -1));
+  const isFocusedCell = createSelector(() =>
+    inGrid() ? `${nav().guide.row}:${nav().guide.prog}` : '',
+  );
 
   const statusText = (p: Program) => {
     switch (status(p, at())) {
@@ -56,24 +69,43 @@ export function Guide(props: { app: App }) {
       <div class="guide-veil" />
 
       <section class="guide-detail">
-        <Show when={focusedProgram()}>
-          {(p) => (
+        <Show when={channel()}>
+          {(c) => (
             <>
               <div class="label muted">
-                {channel()?.number}
-                {'  '}
-                {channel()?.name} · {formatTime(p().start)} – {formatTime(p().end)}
-                <Show when={p().genre}> · {p().genre}</Show>
-              </div>
-              <div class="guide-detail-title title">{p().title}</div>
-              <div class="guide-detail-status label">
-                <span classList={{ accent: status(p(), at()) === 'current' }}>
-                  {statusText(p())}
-                </span>
-                <Show when={p().description}>
-                  <span class="muted guide-detail-description"> · {p().description}</span>
+                <span class="guide-detail-number">{c().number}</span>
+                {c().name}
+                <Show when={focusedProgram()}>
+                  {(p) => (
+                    <>
+                      {' '}
+                      · {formatTime(p().start)} – {formatTime(p().end)}
+                      <Show when={p().genre}> · {p().genre}</Show>
+                    </>
+                  )}
                 </Show>
               </div>
+              <Show
+                when={focusedProgram()}
+                fallback={<div class="guide-detail-title title">Aucun programme</div>}
+              >
+                {(p) => (
+                  <>
+                    <div class="guide-detail-title title">{p().title}</div>
+                    <div class="guide-detail-status label">
+                      <span
+                        class="guide-detail-state"
+                        classList={{ accent: status(p(), at()) === 'current' }}
+                      >
+                        {statusText(p())}
+                      </span>
+                      <Show when={p().description}>
+                        <span class="muted"> · {p().description}</span>
+                      </Show>
+                    </div>
+                  </>
+                )}
+              </Show>
             </>
           )}
         </Show>
@@ -91,45 +123,44 @@ export function Guide(props: { app: App }) {
 
       <div class="guide-grid">
         <div class="guide-track" style={{ transform: `translateY(${-offset() * ROW_PITCH}px)` }}>
-          <Index each={props.app.channels()}>
-            {(c, row) => {
-              const rowFocused = () => inGrid() && nav().guide.row === row;
+          <For each={visibleRows()}>
+            {(row) => {
+              const c = () => props.app.channels()[row];
               return (
-                <div class="guide-row">
-                  <div class="guide-channel" classList={{ focused: rowFocused() }}>
-                    <Show when={imageUrl(c().image)}>
+                <div class="guide-row" style={{ top: `${row * ROW_PITCH}px` }}>
+                  <div class="guide-channel" classList={{ focused: isFocusedRow(row) }}>
+                    <Show when={imageUrl(c()?.image)}>
                       {(src) => <img class="guide-channel-image" src={src()} alt="" />}
                     </Show>
                     <div class="guide-channel-text">
-                      <div class="guide-channel-number caption">{c().number}</div>
-                      <div class="guide-channel-name label">{c().name}</div>
+                      <div class="guide-channel-number caption">{c()?.number}</div>
+                      <div class="guide-channel-name label">{c()?.name}</div>
                     </div>
                   </div>
                   <Index each={props.app.guideRows()[row] ?? []}>
-                    {(p, i) => {
-                      const focused = () => rowFocused() && nav().guide.prog === i;
-                      const current = () => status(p(), at()) === 'current';
-                      return (
-                        <div
-                          class="guide-program"
-                          classList={{ focused: focused(), current: current() }}
-                          style={{
-                            left: `${x(p().start)}px`,
-                            width: `${Math.max(0, x(p().end) - x(p().start) - CELL_GAP)}px`,
-                          }}
-                        >
-                          <span class="guide-program-title label">{p().title}</span>
-                          <span class="guide-program-time caption">
-                            {formatTime(p().start)} – {formatTime(p().end)}
-                          </span>
-                        </div>
-                      );
-                    }}
+                    {(p, i) => (
+                      <div
+                        class="guide-program"
+                        classList={{
+                          focused: isFocusedCell(`${row}:${i}`),
+                          current: status(p(), at()) === 'current',
+                        }}
+                        style={{
+                          left: `${x(p().start)}px`,
+                          width: `${Math.max(0, x(p().end) - x(p().start) - CELL_GAP)}px`,
+                        }}
+                      >
+                        <span class="guide-program-title label">{p().title}</span>
+                        <span class="guide-program-time caption">
+                          {formatTime(p().start)} – {formatTime(p().end)}
+                        </span>
+                      </div>
+                    )}
                   </Index>
                 </div>
               );
             }}
-          </Index>
+          </For>
         </div>
       </div>
 

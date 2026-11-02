@@ -1,0 +1,7 @@
+.live-badge {
+  display: inline-block;
+  padding: 1px var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--live);
+  color: var(--on-live);
+}

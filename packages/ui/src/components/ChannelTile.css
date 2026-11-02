@@ -1,0 +1,111 @@
+.tile {
+  width: 272px;
+  flex: none;
+}
+
+.tile-media {
+  position: relative;
+  width: 272px;
+  height: 153px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-rest);
+  filter: brightness(var(--focus-dim));
+  transition:
+    transform var(--focus-duration) var(--focus-easing),
+    box-shadow var(--focus-duration) var(--focus-easing),
+    filter var(--focus-duration) var(--focus-easing);
+}
+
+.tile.focused .tile-media {
+  transform: translateY(var(--focus-lift)) scale(var(--focus-scale));
+  box-shadow: var(--shadow-lift);
+  filter: none;
+}
+
+.tile-image {
+  display: block;
+  width: 272px;
+  height: 153px;
+  object-fit: cover;
+}
+
+/* Diagonal highlight on the focused tile (135°, 28 % → 0 at 42 %). */
+.tile-sheen {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 42%);
+  opacity: 0;
+  transition: opacity var(--focus-duration) var(--focus-easing);
+}
+
+.tile.focused .tile-sheen {
+  opacity: 1;
+}
+
+/* 1px inner edge that lifts the tile off dark backgrounds. */
+.tile-edge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.tile-live {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+.tile-progress {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.28);
+  overflow: hidden;
+}
+
+.tile-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+}
+
+.tile-caption {
+  margin-top: 12px;
+  transition: transform var(--focus-duration) var(--focus-easing);
+}
+
+.tile.focused .tile-caption {
+  transform: translateY(10px);
+}
+
+.tile-name,
+.tile-now {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile-name {
+  color: var(--ink-muted);
+  transition: color var(--focus-duration) var(--focus-easing);
+}
+
+.tile.focused .tile-name {
+  color: var(--ink);
+}
+
+.tile-now {
+  color: var(--ink-muted);
+}

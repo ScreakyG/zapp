@@ -1,7 +1,8 @@
-import { Match, Show, Switch } from 'solid-js';
+import { For, Match, Show, Switch } from 'solid-js';
 import { formatTyped } from '@zapp/core';
 import { Stage } from './Stage';
 import { createApp } from './app/createApp';
+import { ChannelTileOf } from './components/ChannelTileOf';
 import { TabBar } from './components/TabBar';
 import { DEFAULT_THEME, applyTheme } from './theme/themes';
 import './App.css';
@@ -17,6 +18,20 @@ export function App() {
       <Switch>
         <Match when={nav().screen === 'home'}>
           <Placeholder title="Accueil" issue="#7" />
+          {/* Temporary: first home row, to see ChannelTile until the Home screen lands. */}
+          <div class="tile-row-preview">
+            <For each={app.homeRows()[0]?.channels ?? []}>
+              {(channel, col) => (
+                <ChannelTileOf
+                  app={app}
+                  channel={channel}
+                  focused={
+                    nav().zone === 'content' && nav().home.row === 0 && nav().home.cols[0] === col()
+                  }
+                />
+              )}
+            </For>
+          </div>
         </Match>
         <Match when={nav().screen === 'guide'}>
           <Placeholder title="Guide TV" issue="#8" />

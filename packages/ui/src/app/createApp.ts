@@ -8,9 +8,12 @@ import {
   navigate,
   normalize,
   openPlayer,
+  programAt,
+  progress,
   startZapping,
   toAction,
   type Channel,
+  type Program,
   type Effect,
   type NavContext,
   type NavState,
@@ -30,6 +33,15 @@ export interface HomeRowView {
   channels: number[];
 }
 
+/** Hours of programs loaded on each side of now. */
+const PROGRAM_SPAN = 6 * 3_600_000;
+
+export interface OnAir {
+  program?: Program;
+  next?: Program;
+  progress: number;
+}
+
 export interface ZapView {
   /** Buffer being typed, '' when idle. */
   typed: string;
@@ -47,6 +59,8 @@ export function createApp(source = new DemoSource()) {
   const [now, setNow] = createSignal(Date.now());
   const [banner, setBanner] = createSignal(false);
   const [zap, setZap] = createSignal<ZapView>({ typed: '', error: false });
+  /** Programs per channel id around now (EPG cache comes with #15). */
+  const [programs, setPrograms] = createSignal<Map<string, Program[]>>(new Map());
 
   const mosaicChannels = (filter: number) => {
     const id = MOSAIC_FILTERS[filter]?.id;
@@ -142,6 +156,23 @@ export function createApp(source = new DemoSource()) {
         })),
       );
     });
+    const from = new Date(Date.now() - PROGRAM_SPAN);
+    const to = new Date(Date.now() + PROGRAM_SPAN);
+    const loaded = await Promise.all(list.map((c) => source.getPrograms(c, from, to)));
+    setPrograms(new Map(list.map((c, i) => [c.id, loaded[i] ?? []])));
+  };
+
+  /** What a channel airs now, for tiles and the banner. */
+  const onAir = (channel: number): OnAir => {
+    const c = channels()[channel];
+    const list = c ? (programs().get(c.id) ?? []) : [];
+    const at = new Date(now());
+    const program = programAt(list, at);
+    return {
+      program,
+      next: program ? list[list.indexOf(program) + 1] : undefined,
+      progress: program ? progress(program, at) : 0,
+    };
   };
 
   window.addEventListener('keydown', onKey);
@@ -163,7 +194,7 @@ export function createApp(source = new DemoSource()) {
   });
   void load();
 
-  return { channels, homeRows, nav: view, now, banner, zap, mosaicChannels };
+  return { channels, homeRows, programs, onAir, nav: view, now, banner, zap, mosaicChannels };
 }
 
 export type App = ReturnType<typeof createApp>;

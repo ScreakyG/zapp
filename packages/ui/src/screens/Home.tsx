@@ -6,6 +6,7 @@ import { ChannelTileOf } from '../components/ChannelTileOf';
 import { LiveBadge } from '../components/LiveBadge';
 import { formatTime } from '../format';
 import { imageUrl } from '../images';
+import { visibleColumns } from './window';
 import './Home.css';
 
 /** Row pitch and tile pitch (272 + space-lg), in stage pixels. */
@@ -85,13 +86,15 @@ export function Home(props: { app: App }) {
                       transform: `translateX(${-Math.max(0, col() - SCROLL_FROM_COL) * TILE_PITCH}px)`,
                     }}
                   >
-                    <For each={row.channels}>
-                      {(channel, c) => (
-                        <ChannelTileOf
-                          app={props.app}
-                          channel={channel}
-                          focused={active() && col() === c()}
-                        />
+                    <For each={visibleColumns(row.channels.length, col())}>
+                      {(c) => (
+                        <div class="home-tile" style={{ left: `${c * TILE_PITCH}px` }}>
+                          <ChannelTileOf
+                            app={props.app}
+                            channel={row.channels[c]!}
+                            focused={active() && col() === c}
+                          />
+                        </div>
                       )}
                     </For>
                   </div>

@@ -92,10 +92,14 @@
   color: var(--ink);
 }
 
+/* Tiles are placed by column (see visibleColumns): only those near the focus exist. */
 .home-row-track {
-  display: flex;
+  position: relative;
+  /* Tiles are absolutely placed: reserve their height (153 image + caption). */
+  height: 220px;
 }
 
-.home-row-track > * + * {
-  margin-left: var(--space-lg);
+.home-tile {
+  position: absolute;
+  top: 0;
 }

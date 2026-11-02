@@ -53,6 +53,29 @@ describe('parseM3u', () => {
     });
   });
 
+  it('reads single-quoted and bare attributes', () => {
+    const [e] = parseM3u(
+      "#EXTM3U\n#extinf:-1 tvg-id='a.b' tvg-chno=7 group-title='Kids, Family',Name\nhttp://x/1",
+    );
+    expect(e).toMatchObject({
+      name: 'Name',
+      attrs: { 'tvg-id': 'a.b', 'tvg-chno': '7', 'group-title': 'Kids, Family' },
+    });
+  });
+
+  it('falls back to tvg-name and handles indented lines and Kodi props', () => {
+    const [e] = parseM3u(
+      '  #EXTINF:-1 tvg-name="Fallback",\n#KODIPROP:inputstream=x\n   http://x/2  ',
+    );
+    expect(e).toMatchObject({ name: 'Fallback', url: 'http://x/2' });
+  });
+
+  it('strips Kodi-style header suffixes from URLs', () => {
+    const [e] = parseM3u('#EXTINF:-1,A\nhttp://x/3.ts|User-Agent=VLC&Referer=http://r');
+    expect(e!.url).toBe('http://x/3.ts');
+    expect(e!.attrs['http-headers']).toBe('User-Agent=VLC&Referer=http://r');
+  });
+
   it('ignores an #EXTINF without URL', () => {
     expect(parseM3u('#EXTM3U\n#EXTINF:-1,Orphan\n')).toEqual([]);
   });
@@ -78,6 +101,15 @@ describe('m3uChannels', () => {
     expect(channels.map((c) => c.streamUrl)).not.toContain(undefined);
     expect(new Set(channels.map((c) => c.id)).size).toBe(4);
     expect(channels[0]!.id).toBe(`m3u:${hash('http://stream.test/live/1.ts')}`);
+  });
+
+  it('gives 100k URLs distinct ids', () => {
+    const entries = Array.from({ length: 100_000 }, (_, i) => ({
+      name: String(i),
+      url: `http://provider.test:8080/live/user/pass/${i}.ts`,
+      attrs: {},
+    }));
+    expect(new Set(m3uChannels(entries).map((c) => c.id)).size).toBe(100_000);
   });
 
   it('applies the group filter without changing ids', () => {

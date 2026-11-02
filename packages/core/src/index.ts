@@ -11,3 +11,4 @@ export * from './m3u-source';
 export * from './xmltv';
 export * from './epg-cache';
 export * from './zap';
+export * from './keyboard';

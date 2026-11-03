@@ -210,11 +210,20 @@ describe('createApp', () => {
     await app.programsLoaded();
     expect(app.channels()).toHaveLength(2000);
     expect(calls).toBe(0);
-    app.wantPrograms(Array.from({ length: 20 }, (_, i) => i));
-    app.wantPrograms([0, 1, 2]); // already asked: no new request
+    const screen = Array.from({ length: 20 }, (_, i) => i);
+    app.wantPrograms(screen);
     await new Promise((r) => setTimeout(r, 50));
+    app.wantPrograms(screen); // already asked: no new request
+    await new Promise((r) => setTimeout(r, 20));
     expect(calls).toBe(20);
     expect(peak).toBeLessThanOrEqual(3);
+
+    // Scrolling fast: what was queued for tiles that left the screen is dropped.
+    calls = 0;
+    app.wantPrograms(Array.from({ length: 30 }, (_, i) => 100 + i));
+    app.wantPrograms([500, 501]);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls).toBeLessThanOrEqual(3 + 2);
     dispose();
   });
 

@@ -175,9 +175,11 @@ export class XtreamSource implements Source {
     });
     let response: Response;
     try {
-      response = await this.limit(() =>
-        this.http(`${this.base}/player_api.php?${query}`, { signal }),
-      );
+      // The body is read inside the slot: the connection stays open until then.
+      response = await this.limit(async () => {
+        const r = await this.http(`${this.base}/player_api.php?${query}`, { signal });
+        return new Response(await r.arrayBuffer(), { status: r.status, headers: r.headers });
+      });
     } catch (error) {
       if (signal?.aborted) throw error;
       throw new XtreamError('Serveur injoignable');

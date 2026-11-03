@@ -31,6 +31,10 @@ export class M3uSource implements Source {
       },
       this.http,
       config.store,
+      async () => {
+        const channels = await (this.channelsLoaded ?? this.getChannels());
+        return new Set(channels.flatMap((c) => (c.epgId ? [c.epgId] : [])));
+      },
     );
   }
 

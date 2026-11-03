@@ -15,6 +15,7 @@ export class XmltvGuide {
     private readonly urls: () => Promise<string[]>,
     private readonly http: typeof fetch,
     private readonly store: EpgStore = new MemoryEpgStore(),
+    private readonly channels?: () => Promise<ReadonlySet<string>>,
   ) {}
 
   async getPrograms(channel: Channel, from: Date, to: Date): Promise<Program[]> {
@@ -37,9 +38,13 @@ export class XmltvGuide {
 
   private async load() {
     const urls = await this.urls();
+    const channels = await this.channels?.();
+    // A filtered guide cannot be reused after changing groups, even at the same URL.
+    const scope = channels ? `\n${JSON.stringify([...channels].sort())}` : '';
     let lastError: unknown;
     for (const url of urls) {
-      const cached = await this.store.load(url).catch(() => undefined);
+      const key = url + scope;
+      const cached = await this.store.load(key).catch(() => undefined);
       if (cached && Date.now() - cached.savedAt < MAX_AGE) {
         this.loadedAt = cached.savedAt;
         return group(cached.programmes);
@@ -49,9 +54,9 @@ export class XmltvGuide {
         if (!response.ok) throw new Error(`Guide : erreur du serveur (${response.status})`);
         if (!response.body) throw new Error('Guide TV illisible');
         const now = Date.now();
-        const programmes = await readGuideBody(response.body, now);
+        const programmes = await readGuideBody(response.body, now, channels);
         this.loadedAt = Date.now();
-        await this.store.save(url, programmes).catch(() => {});
+        await this.store.save(key, programmes).catch(() => {});
         return group(programmes);
       } catch {
         lastError = new Error('Guide TV indisponible ou illisible');
@@ -63,11 +68,16 @@ export class XmltvGuide {
 }
 
 /** Detect gzip from bytes: fetch may already have decoded Content-Encoding, even for .gz. */
-async function readGuideBody(body: ReadableStream<Uint8Array>, now: number) {
+async function readGuideBody(
+  body: ReadableStream<Uint8Array>,
+  now: number,
+  channels?: ReadonlySet<string>,
+) {
   const reader = body.getReader();
   const xml = new XmltvReader({
     from: new Date(now - HALF_WINDOW),
     to: new Date(now + HALF_WINDOW),
+    channels,
   });
   const decoder = new TextDecoder();
   let prefix = new Uint8Array(0);

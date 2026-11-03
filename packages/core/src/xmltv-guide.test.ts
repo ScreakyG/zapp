@@ -37,6 +37,29 @@ function response(bytes: Uint8Array, size = 7) {
 afterEach(() => vi.useRealTimers());
 
 describe('external XMLTV guide', () => {
+  it('keeps only selected channels and invalidates the persisted cache when groups change', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const store = new MemoryEpgStore();
+    const save = vi.spyOn(store, 'save');
+    const http = vi.fn(async () => new Response(xml));
+    const selected = async () => new Set(['tf1.fr']);
+    await new XmltvGuide(async () => [url], http, store, selected).getPrograms(channel, from, to);
+    expect(save.mock.calls[0]![1].map((p) => p.channel)).toEqual(['tf1.fr']);
+    await new XmltvGuide(async () => [url], http, store, selected).getPrograms(channel, from, to);
+    expect(http).toHaveBeenCalledTimes(1);
+    const changed = new XmltvGuide(
+      async () => [url],
+      http,
+      store,
+      async () => new Set(['other']),
+    );
+    expect(await changed.getPrograms({ ...channel, epgId: 'other' }, from, to)).toMatchObject([
+      { title: 'Other' },
+    ]);
+    expect(http).toHaveBeenCalledTimes(2);
+    expect(save.mock.calls[1]![1].map((p) => p.channel)).toEqual(['other']);
+  });
   for (const compressed of [true, false]) {
     it(`reads ${compressed ? 'raw gzip' : 'already decoded .gz'} split into single bytes`, async () => {
       vi.useFakeTimers();

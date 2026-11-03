@@ -69,6 +69,7 @@ const EPG_LIMIT = 12;
 
 /** Xtream Codes API (player_api.php): live channels, categories and per-channel EPG. */
 export class XtreamSource implements Source {
+  private channelsLoaded?: Promise<Channel[]>;
   private readonly guide?: XmltvGuide;
   private readonly base: string;
   private readonly http: typeof fetch;
@@ -84,7 +85,15 @@ export class XtreamSource implements Source {
     this.base = config.server.replace(/\/+$/, '');
     this.http = config.fetch ?? fetch.bind(globalThis);
     if (config.epgUrl)
-      this.guide = new XmltvGuide(async () => [config.epgUrl!], this.http, config.store);
+      this.guide = new XmltvGuide(
+        async () => [config.epgUrl!],
+        this.http,
+        config.store,
+        async () => {
+          const channels = await (this.channelsLoaded ?? this.getChannels());
+          return new Set(channels.flatMap((c) => (c.epgId ? [c.epgId] : [])));
+        },
+      );
   }
 
   /** Checks the credentials; throws XtreamError with a user-facing message when refused. */
@@ -110,7 +119,12 @@ export class XtreamSource implements Source {
     };
   }
 
-  async getChannels(): Promise<Channel[]> {
+  getChannels(): Promise<Channel[]> {
+    this.channelsLoaded = this.readChannels();
+    return this.channelsLoaded;
+  }
+
+  private async readChannels(): Promise<Channel[]> {
     const [categories, streams] = await Promise.all([
       this.api<RawCategory[]>('get_live_categories').then((x) => list<RawCategory>(x)),
       this.api<RawStream[]>('get_live_streams').then((x) => list<RawStream>(x)),

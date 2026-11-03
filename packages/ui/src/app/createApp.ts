@@ -170,6 +170,16 @@ export function createApp(options: AppOptions = {}) {
   const [loading, setLoading] = createSignal(false);
 
   const [channels, setChannels] = createSignal<Channel[]>([]);
+  const [searchQuery, setSearchQuery] = createSignal('');
+  const searchable = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  const searchIndex = createMemo(() => channels().map((c) => searchable(`${c.name} ${c.number}`)));
+  const searchTerms = createMemo(() =>
+    searchable(searchQuery()).trim().split(/\s+/).filter(Boolean),
+  );
   const [homeRows, setHomeRows] = createSignal<HomeRowView[]>([]);
   const [now, setNow] = createSignal(Date.now());
   const [banner, setBanner] = createSignal(false);
@@ -179,7 +189,11 @@ export function createApp(options: AppOptions = {}) {
 
   const mosaicChannels = (filter: number) => {
     const id = MOSAIC_FILTERS[filter]?.id;
-    return channels().flatMap((c, i) => (!id || c.category === id ? [i] : []));
+    return channels().flatMap((c, i) =>
+      (!id || c.category === id) && searchTerms().every((term) => searchIndex()[i]!.includes(term))
+        ? [i]
+        : [],
+    );
   };
 
   /** Guide window: 2 h, starting 30 to 60 min before now so recent programs stay in view. */
@@ -620,6 +634,12 @@ export function createApp(options: AppOptions = {}) {
     banner,
     zap,
     mosaicChannels,
+    searchQuery,
+    search: (query: string) =>
+      batch(() => {
+        setSearchQuery(query);
+        setNav((s) => ({ ...s, mosaic: { ...s.mosaic, idx: 0 } }));
+      }),
   };
 }
 

@@ -67,6 +67,45 @@ function start(settings: Partial<Settings>, sources: Source[]) {
 }
 
 describe('createApp', () => {
+  it('searches names and numbers, combines categories, and tunes the matching channel', async () => {
+    const a = controlledSource([
+      channel('TF1', '001'),
+      { ...channel('Événements Sport', '042'), category: 'sport' as const },
+      channel('France 2', '002'),
+    ]);
+    const { app, dispose } = start({}, [a.source]);
+    try {
+      a.releaseChannels();
+      await flush();
+      app.point((s) => ({
+        ...s,
+        screen: 'mosaic',
+        zone: 'content',
+        mosaic: { filter: 0, idx: 2 },
+      }));
+      app.search('  SPORT evenements  ');
+      expect(app.mosaicChannels(0)).toEqual([1]);
+      expect(app.mosaicChannels(1)).toEqual([1]);
+      expect(app.mosaicChannels(2)).toEqual([]);
+      expect(app.nav().mosaic.idx).toBe(0);
+      app.press('ok');
+      expect(app.nav()).toMatchObject({ screen: 'player', player: { channel: 1 } });
+      app.press('back');
+      expect(app.searchQuery()).toBe('  SPORT evenements  ');
+      app.search('042');
+      expect(app.mosaicChannels(0)).toEqual([1]);
+      app.search('introuvable');
+      expect(app.mosaicChannels(0)).toEqual([]);
+      expect(app.nav().zone).toBe('chips');
+      app.press('ok');
+      expect(app.nav().screen).toBe('mosaic');
+      app.search('   ');
+      expect(app.mosaicChannels(0)).toEqual([0, 1, 2]);
+    } finally {
+      dispose();
+    }
+  });
+
   it('reopens the last channel at start-up', async () => {
     const a = controlledSource([channel('a', '001'), channel('b', '002')]);
     const { app, dispose } = start({ lastChannel: 'b' }, [a.source]);

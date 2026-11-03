@@ -190,7 +190,9 @@ describe('mosaic', () => {
 
   it('↑ from the first line goes to the chips, then to the Mosaic tab', () => {
     expect(press(m(0, 1), 'up').zone).toBe('chips');
-    expect(press(m(0, 0, 'chips'), 'up')).toMatchObject({ zone: 'menu', menuIdx: 2 });
+    expect(press(m(0, 0, 'chips'), 'up').zone).toBe('search');
+    expect(press(m(0, 0, 'chips'), 'up', 'up')).toMatchObject({ zone: 'menu', menuIdx: 2 });
+    expect(press(m(0, 0, 'chips'), 'up', 'up', 'down').zone).toBe('search');
   });
 
   it('cannot enter an empty grid', () => {

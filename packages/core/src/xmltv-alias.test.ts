@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { XmltvReader } from './xmltv';
+import { epgChannelNames } from './xmltv-guide';
 
 const filter = {
   from: new Date('2026-11-03T00:00:00Z'),
@@ -12,6 +13,25 @@ const filter = {
 };
 const programme = (id: string) =>
   `<programme channel="${id}" start="20261103120000 +0000" stop="20261103130000 +0000"><title>${id}</title></programme>`;
+it('retains names of quality variants sharing an EPG id', () => {
+  const channelNames = epgChannelNames(
+    ['US: BEIN SPORTS HD', 'US: BEIN SPORTS FHD'].map((name) => ({
+      id: name,
+      epgId: 'beINSports.us',
+      name,
+      number: '1',
+      category: 'sport' as const,
+      streamUrl: '',
+    })),
+  );
+  const reader = new XmltvReader({ ...filter, channelNames });
+  reader.push(
+    '<tv><channel id="beinsports.us"><display-name>US: BEIN SPORTS HD</display-name></channel>' +
+      programme('beinsports.us') +
+      '</tv>',
+  );
+  expect(reader.end().map((p) => p.channel)).toEqual(['beINSports.us']);
+});
 it('matches the provider aliases across arbitrary chunk boundaries', () => {
   const xml =
     '<tv><channel id="beinsports.us"><display-name>US: BEIN SPORTS HD</display-name></channel><channel id="espnu.us"><display-name>US: ESPN USA HD</display-name></channel>' +

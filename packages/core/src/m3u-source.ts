@@ -2,7 +2,7 @@ import type { CategoryKeywords } from './categories';
 import type { EpgStore } from './epg-cache';
 import { m3uChannels, parseM3u } from './m3u';
 import type { Channel, Program, Source } from './model';
-import { XmltvGuide } from './xmltv-guide';
+import { XmltvGuide, epgChannelNames } from './xmltv-guide';
 
 export interface M3uConfig {
   playlistUrl: string;
@@ -37,7 +37,7 @@ export class M3uSource implements Source {
       },
       async () => {
         const channels = await (this.channelsLoaded ?? this.getChannels());
-        return new Map(channels.flatMap((c) => (c.epgId ? [[c.epgId, c.name] as const] : [])));
+        return epgChannelNames(channels);
       },
     );
   }

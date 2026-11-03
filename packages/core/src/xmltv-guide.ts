@@ -7,6 +7,19 @@ import { XmltvReader, type XmltvProgramme } from './xmltv';
 const MAX_AGE = 6 * 3_600_000;
 const HALF_WINDOW = 12 * 3_600_000;
 
+/** Quality variants can share an EPG id; retain every name for alias resolution. */
+export function epgChannelNames(channels: Channel[]): Map<string, string[]> {
+  const result = new Map<string, string[]>();
+  for (const channel of channels) {
+    if (!channel.epgId) continue;
+    result.set(
+      channel.epgId,
+      [...new Set([...(result.get(channel.epgId) ?? []), channel.name])].sort(),
+    );
+  }
+  return result;
+}
+
 /** Shared XMLTV download and cache for M3U and Xtream, independent of the visible rows. */
 export class XmltvGuide {
   private guide?: Promise<Map<string, Program[]>>;
@@ -16,7 +29,7 @@ export class XmltvGuide {
     private readonly http: typeof fetch,
     private readonly store: EpgStore = new MemoryEpgStore(),
     private readonly channels?: () => Promise<ReadonlySet<string>>,
-    private readonly channelNames?: () => Promise<ReadonlyMap<string, string>>,
+    private readonly channelNames?: () => Promise<ReadonlyMap<string, string | readonly string[]>>,
   ) {}
 
   async getPrograms(channel: Channel, from: Date, to: Date): Promise<Program[]> {
@@ -76,7 +89,7 @@ async function readGuideBody(
   body: ReadableStream<Uint8Array>,
   now: number,
   channels?: ReadonlySet<string>,
-  channelNames?: ReadonlyMap<string, string>,
+  channelNames?: ReadonlyMap<string, string | readonly string[]>,
 ) {
   const reader = body.getReader();
   const xml = new XmltvReader({

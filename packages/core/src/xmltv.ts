@@ -20,7 +20,7 @@ export interface XmltvFilter {
   /** Keep only these channel ids; all when omitted. */
   channels?: ReadonlySet<string>;
   /** Requested EPG ids and their display names, used only when the exact id is absent. */
-  channelNames?: ReadonlyMap<string, string>;
+  channelNames?: ReadonlyMap<string, string | readonly string[]>;
 }
 
 /** Collects programmes from text chunks; call `push` per chunk, then `end`. */
@@ -78,9 +78,14 @@ export class XmltvReader {
   private element(xml: string): void {
     if (!this.mapped) {
       this.mapped = true;
-      for (const [id, name] of this.filter.channelNames ?? []) {
+      for (const [id, names] of this.filter.channelNames ?? []) {
         if (this.ids.has(id)) continue;
-        const target = this.names.get(normalizeChannelName(name));
+        const matches = new Set(
+          (typeof names === 'string' ? [names] : names)
+            .map((name) => this.names.get(normalizeChannelName(name)))
+            .filter(Boolean),
+        );
+        const target = matches.size === 1 ? [...matches][0] : undefined;
         if (target) this.aliases.set(target, [...(this.aliases.get(target) ?? []), id]);
       }
     }

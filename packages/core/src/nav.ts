@@ -7,7 +7,7 @@ import type { Action } from './keys';
  */
 
 export type Screen = 'home' | 'guide' | 'mosaic' | 'player' | 'settings';
-export type Zone = 'menu' | 'chips' | 'content';
+export type Zone = 'menu' | 'search' | 'chips' | 'content';
 
 /** TabBar entries, left to right. The gear sits after the tabs, top right. */
 export const MENU = ['home', 'guide', 'mosaic', 'settings'] as const;
@@ -187,7 +187,7 @@ function menu(state: NavState, action: Nav, ctx: NavContext): NavResult {
     case 'right':
       return done({ ...state, menuIdx: Math.min(MENU.length - 1, state.menuIdx + 1) });
     case 'down':
-      return done({ ...state, zone: state.screen === 'mosaic' ? 'chips' : 'content' });
+      return done({ ...state, zone: state.screen === 'mosaic' ? 'search' : 'content' });
     case 'ok':
       return done(enterGuide(goTo(state, MENU[state.menuIdx]!), ctx));
     case 'back':
@@ -254,6 +254,12 @@ function guide(state: NavState, action: Nav, ctx: NavContext): NavResult {
 
 function mosaic(state: NavState, action: Nav, ctx: NavContext): NavResult {
   const { filter } = state.mosaic;
+  if (state.zone === 'search') {
+    if (action === 'up') return done(toMenu(state, 'mosaic'));
+    if (action === 'down') return done({ ...state, zone: 'chips' });
+    if (action === 'back') return done(goTo(state, 'home'));
+    return done(state);
+  }
   if (state.zone === 'chips') {
     switch (action) {
       case 'left':
@@ -263,7 +269,7 @@ function mosaic(state: NavState, action: Nav, ctx: NavContext): NavResult {
         return done({ ...state, mosaic: { filter: f, idx: 0 } });
       }
       case 'up':
-        return done(toMenu(state, 'mosaic'));
+        return done({ ...state, zone: 'search' });
       case 'down':
       case 'ok':
         return ctx.mosaicChannels(filter).length > 0

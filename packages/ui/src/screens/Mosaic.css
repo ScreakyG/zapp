@@ -8,7 +8,7 @@
 
 .mosaic-chips {
   position: absolute;
-  top: 112px;
+  top: 172px;
   left: var(--space-safe);
   right: var(--space-safe);
   display: flex;
@@ -51,7 +51,7 @@
 
 .mosaic-grid {
   position: absolute;
-  top: 168px;
+  top: 228px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -67,4 +67,21 @@
 
 .mosaic-cell {
   position: absolute;
+}
+
+.mosaic-search {
+  position: absolute;
+  top: 112px;
+  left: var(--space-safe);
+  max-width: calc(100% - 2 * var(--space-safe));
+  border: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.mosaic-empty {
+  margin: var(--space-sm) var(--space-safe);
+  color: var(--ink-muted);
 }

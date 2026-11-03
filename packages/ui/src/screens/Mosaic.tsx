@@ -1,4 +1,14 @@
-import { For, createEffect, createMemo, createSelector } from 'solid-js';
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSelector,
+  createSignal,
+  onCleanup,
+} from 'solid-js';
+import { toAction } from '@zapp/core';
+import { TextEntry } from '../components/TextEntry';
 import { MOSAIC_COLUMNS, MOSAIC_FILTERS, type App } from '../app/createApp';
 import { pointerTo } from '../app/pointer';
 import { ChannelTileOf } from '../components/ChannelTileOf';
@@ -16,6 +26,16 @@ const VISIBLE_ROWS = 2;
 /** Mosaic (HANDOFF §4): category chips, then a 4-column grid of the filtered channels. */
 export function Mosaic(props: { app: App }) {
   const nav = () => props.app.nav();
+  const [editing, setEditing] = createSignal(false);
+  onCleanup(
+    props.app.captureKeys((event) => {
+      if (nav().zone === 'search' && toAction(event) === 'ok') {
+        if (!event.repeat) setEditing(true);
+        return true;
+      }
+      return false;
+    }),
+  );
   // Memo: a key press must not re-filter every channel.
   const filter = createMemo(() => nav().mosaic.filter);
   const list = createMemo(() => props.app.mosaicChannels(filter()));
@@ -42,6 +62,16 @@ export function Mosaic(props: { app: App }) {
 
   return (
     <div class="mosaic">
+      <button
+        type="button"
+        class="mosaic-search chip label"
+        classList={{ focused: nav().zone === 'search' }}
+        {...pointerTo(props.app, (s) => ({ ...s, zone: 'search' }))}
+      >
+        {props.app.searchQuery()
+          ? `Recherche : ${props.app.searchQuery()}`
+          : 'Rechercher une chaîne par nom ou numéro'}
+      </button>
       <div class="mosaic-chips">
         <For each={MOSAIC_FILTERS}>
           {(chip, i) => (
@@ -71,6 +101,11 @@ export function Mosaic(props: { app: App }) {
       </div>
 
       <div class="mosaic-grid">
+        <Show when={list().length === 0}>
+          <div class="mosaic-empty body" role="status">
+            Aucune chaîne trouvée. Modifiez la recherche ou choisissez une autre catégorie.
+          </div>
+        </Show>
         <div class="mosaic-track" style={{ transform: `translateY(${-offset() * ROW_PITCH}px)` }}>
           <For each={visible()}>
             {(channel, index) => {
@@ -99,6 +134,18 @@ export function Mosaic(props: { app: App }) {
           </For>
         </div>
       </div>
+      <Show when={editing()}>
+        <TextEntry
+          app={props.app}
+          label="Rechercher une chaîne · Effacer le texte pour tout afficher"
+          value={props.app.searchQuery()}
+          onDone={(value) => {
+            props.app.search(value);
+            setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      </Show>
     </div>
   );
 }

@@ -32,10 +32,13 @@ export function engineOrder(format: StreamFormat, caps: PlatformCaps): EngineNam
   return js.length ? js : ['native'];
 }
 
+/** LG webOS TV (its user agent spells it "Web0S"). */
+export const isWebOS = (): boolean => /web0s|webos/i.test(navigator.userAgent);
+
 export function detectCaps(): PlatformCaps {
   const video = document.createElement('video');
   return {
-    webos: /web0s|webos/i.test(navigator.userAgent),
+    webos: isWebOS(),
     nativeHls: video.canPlayType('application/vnd.apple.mpegurl') !== '',
     mse: typeof window.MediaSource !== 'undefined',
   };

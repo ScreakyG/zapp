@@ -8,7 +8,8 @@
     "start": "pnpm --filter @zapp/ui build && electron .",
     "dev": "cross-env ZAPP_DEV_URL=http://localhost:5173 electron .",
     "dist": "pnpm --filter @zapp/ui build && electron-builder --win",
-    "smoke": "pnpm --filter @zapp/ui build && electron smoke.cjs"
+    "smoke": "pnpm --filter @zapp/ui build && electron smoke.cjs",
+    "diag": "electron diag.cjs"
   },
   "build": {
     "appId": "dev.zapp.desktop",

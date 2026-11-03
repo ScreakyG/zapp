@@ -1,4 +1,4 @@
-import { For, createMemo, createSelector } from 'solid-js';
+import { For, createEffect, createMemo, createSelector } from 'solid-js';
 import { MOSAIC_COLUMNS, MOSAIC_FILTERS, type App } from '../app/createApp';
 import { pointerTo } from '../app/pointer';
 import { ChannelTileOf } from '../components/ChannelTileOf';
@@ -34,6 +34,8 @@ export function Mosaic(props: { app: App }) {
   const visible = createMemo(() =>
     list().slice(first(), (offset() + VISIBLE_ROWS + 2) * MOSAIC_COLUMNS),
   );
+
+  createEffect(() => props.app.wantPrograms(visible()));
 
   const isFocusedTile = createSelector(() => (nav().zone === 'content' ? nav().mosaic.idx : -1));
   const chipsFocused = () => nav().zone === 'chips';

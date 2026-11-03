@@ -12,3 +12,4 @@ export * from './xmltv';
 export * from './epg-cache';
 export * from './zap';
 export * from './keyboard';
+export * from './limit';

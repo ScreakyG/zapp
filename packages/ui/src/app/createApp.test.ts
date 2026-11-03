@@ -188,6 +188,45 @@ describe('createApp', () => {
     dispose();
   });
 
+  it('does not ask the EPG of a whole panel at start, and asks few at a time', async () => {
+    // Regression: asking the EPG of every channel at once got the user's IP banned.
+    const list = Array.from({ length: 2000 }, (_, i) => channel(`c${i}`, String(i + 1)));
+    let calls = 0;
+    let active = 0;
+    let peak = 0;
+    const panel: Source = {
+      getChannels: async () => list,
+      getPrograms: async () => {
+        calls++;
+        active++;
+        peak = Math.max(peak, active);
+        await new Promise((r) => setTimeout(r, 1));
+        active--;
+        return [];
+      },
+    };
+    const { app, dispose } = start({}, [panel]);
+    await flush();
+    await app.programsLoaded();
+    expect(app.channels()).toHaveLength(2000);
+    expect(calls).toBe(0);
+    const screen = Array.from({ length: 20 }, (_, i) => i);
+    app.wantPrograms(screen);
+    await new Promise((r) => setTimeout(r, 50));
+    app.wantPrograms(screen); // already asked: no new request
+    await new Promise((r) => setTimeout(r, 20));
+    expect(calls).toBe(20);
+    expect(peak).toBeLessThanOrEqual(3);
+
+    // Scrolling fast: what was queued for tiles that left the screen is dropped.
+    calls = 0;
+    app.wantPrograms(Array.from({ length: 30 }, (_, i) => 100 + i));
+    app.wantPrograms([500, 501]);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls).toBeLessThanOrEqual(3 + 2);
+    dispose();
+  });
+
   it('keeps the previous channels when a reload fails', async () => {
     const ok = controlledSource([channel('a', '001')]);
     const broken: Source = {

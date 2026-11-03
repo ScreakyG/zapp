@@ -17,6 +17,7 @@ import {
   NumberZapper,
   findChannelByNumber,
   MENU,
+  createLimiter,
   initialNav,
   navigate,
   normalize,
@@ -57,6 +58,13 @@ export interface HomeRowView {
   title: string;
   channels: number[];
 }
+
+/** Up to this many channels, all programs are asked at load (demo); beyond, on demand. */
+const EAGER_EPG_LIMIT = 60;
+/** EPG requests in flight at once, whatever the source. */
+const EPG_CONCURRENCY = 3;
+/** Wait before asking again the programs of a channel whose request failed. */
+const RETRY_DELAY = 60_000;
 
 const HOVER_PAUSE = 300;
 const WHEEL_STEP = 50;
@@ -379,32 +387,109 @@ export function createApp(options: AppOptions = {}) {
       if (first && last >= 0 && isInitial(nav())) apply(openPlayer(nav(), last));
       resumed = true;
     });
-    programsLoaded = loadPrograms(list, mine).then(() => {
-      if (mine !== generation || curated) return;
-      showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false, favourites));
-    });
+    startProgramsWindow();
+    wanted = null;
+    setPrograms(new Map());
+    // A small list (demo) gets all its programs at once, which also fills "En direct maintenant".
+    // A real panel lists thousands of channels: asking the EPG of all of them at start is the
+    // burst that gets an IP banned, so only the channels on screen are asked (wantPrograms).
+    programsLoaded =
+      list.length <= EAGER_EPG_LIMIT
+        ? requestPrograms(list.map((_, i) => i)).then(() => {
+            if (mine !== generation || curated) return;
+            showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false, favourites));
+          })
+        : Promise.resolve();
     return true;
   };
 
-  // A channel whose EPG fails simply shows no program; it must not blank the others.
+  // Programs are asked per channel, a few at a time, for the window around now. A channel
+  // whose EPG fails simply shows no program; it must not blank the others.
+  let programsFrom = 0;
   let programsUntil = 0;
-  const loadPrograms = async (list: Channel[], mine: number) => {
-    const from = new Date(Date.now() - PROGRAM_SPAN);
-    const to = new Date(Date.now() + PROGRAM_SPAN);
-    programsUntil = to.getTime();
-    const epgSource = source;
-    const loaded = await Promise.all(
-      list.map((c) => epgSource.getPrograms(c, from, to).catch((): Program[] => [])),
-    );
-    // A reload started meanwhile: these programs belong to the previous source.
-    if (mine !== generation) return;
-    setPrograms(new Map(list.map((c, i) => [c.id, loaded[i] ?? []])));
+  /** Channel ids asked (queued, in flight or answered) in the current window. */
+  let requested = new Set<string>();
+  /** Channels on screen right now (last wantPrograms); null: every channel is wanted. */
+  let wanted: Set<string> | null = null;
+  /** A failed channel is asked again only after this time (ms), to avoid hammering it. */
+  const retryAt = new Map<string, number>();
+  const epgLimit = createLimiter(EPG_CONCURRENCY);
+
+  const startProgramsWindow = () => {
+    programsFrom = Date.now() - PROGRAM_SPAN;
+    programsUntil = Date.now() + PROGRAM_SPAN;
+    requested = new Set();
+    retryAt.clear();
   };
 
-  // Slide the window before it runs out. TODO(#15): incremental refresh through the EPG cache.
+  // Results are applied together once per microtask: each arrival would otherwise recompute
+  // the guide rows and every tile.
+  let arrivals = new Map<string, Program[]>();
+  const flushArrivals = () => {
+    const batch = arrivals;
+    arrivals = new Map();
+    setPrograms((prev) => {
+      const next = new Map(prev);
+      for (const [id, list] of batch) next.set(id, list);
+      return next;
+    });
+  };
+
+  const requestPrograms = (indices: number[]): Promise<void> => {
+    const mine = generation;
+    const epgSource = source;
+    const list = untrack(channels);
+    const now = Date.now();
+    const todo = indices.flatMap((i) => {
+      const c = list[i];
+      return c && !requested.has(c.id) && (retryAt.get(c.id) ?? 0) <= now ? [c] : [];
+    });
+    if (todo.length === 0) return Promise.resolve();
+    for (const c of todo) requested.add(c.id);
+    const from = new Date(programsFrom);
+    const to = new Date(programsUntil);
+    return Promise.all(
+      todo.map((c) =>
+        epgLimit(async () => {
+          // When its turn comes: skip a channel that left the screen (asked again if it comes
+          // back) and any work of a source replaced by a reload.
+          if (mine !== generation || (wanted && !wanted.has(c.id))) {
+            if (mine === generation) requested.delete(c.id);
+            return undefined;
+          }
+          try {
+            return await epgSource.getPrograms(c, from, to);
+          } catch {
+            requested.delete(c.id);
+            retryAt.set(c.id, Date.now() + RETRY_DELAY);
+            return undefined;
+          }
+        }).then((programs) => {
+          if (mine !== generation || !programs) return;
+          if (arrivals.size === 0) queueMicrotask(flushArrivals);
+          arrivals.set(c.id, programs);
+        }),
+      ),
+    ).then(() => undefined);
+  };
+
+  /** Screens declare the channels they show; their programs are fetched if not yet asked. */
+  const wantPrograms = (indices: number[]) => {
+    const list = untrack(channels);
+    if (list.length > EAGER_EPG_LIMIT) {
+      wanted = new Set(indices.flatMap((i) => (list[i] ? [list[i].id] : [])));
+    }
+    void requestPrograms(indices);
+  };
+
+  // Slide the window before it runs out. Programs already shown stay until replaced; only the
+  // channels on screen are asked again (the others when they come back into view).
   createEffect(() => {
     if (programsUntil && now() > programsUntil - PROGRAM_SPAN / 2) {
-      void loadPrograms(untrack(channels), generation);
+      const list = untrack(channels);
+      const again = wanted ?? new Set(list.map((c) => c.id));
+      startProgramsWindow();
+      void requestPrograms(list.flatMap((c, i) => (again.has(c.id) ? [i] : [])));
     }
   });
 
@@ -510,6 +595,7 @@ export function createApp(options: AppOptions = {}) {
     secrets,
     reload,
     programsLoaded: () => programsLoaded,
+    wantPrograms,
     captureKeys,
     /** Whether the mouse drives the UI (PC); screens add hover and click handlers then. */
     pointer,

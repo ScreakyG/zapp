@@ -30,3 +30,15 @@ pnpm install
 pnpm dev        # app dans le navigateur
 pnpm test       # tests Vitest
 ```
+
+## Guide TV du fournisseur VHPlayer
+
+Dans **Paramètres**, sélectionner la source Xtream Codes ou M3U, puis **Guide TV (EPG)** :
+
+- **Strong8K** ou **Trex** : liens du [guide fournisseur](https://vhplayer.com/epg.html), préremplis.
+- **Personnalisé** : saisir une adresse XMLTV (`.xml` ou `.xml.gz`).
+- **Par défaut** : EPG de l’API Xtream ou adresse indiquée dans la playlist M3U.
+
+Choisir **Tester et enregistrer** pour appliquer. Les programmes du guide externe sont associés
+aux chaînes par leur identifiant EPG fourni dans la playlist / l’API, puis conservés en cache
+pendant six heures. Une chaîne sans identifiant correspondant n’aura pas de programme affiché.

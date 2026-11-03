@@ -7,6 +7,13 @@ import { TextEntry } from '../components/TextEntry';
 import { THEMES, nextTheme } from '../theme/themes';
 import './Settings.css';
 
+const EPG_GUIDES = [
+  { label: 'Par défaut', url: '' },
+  { label: 'Strong8K', url: 'https://vhepg.com/strong8k.xml.gz' },
+  { label: 'Trex', url: 'https://vhepg.com/trex.xml.gz' },
+  { label: 'Personnalisé', url: undefined },
+];
+
 type Kind = 'demo' | 'xtream' | 'm3u';
 const KINDS: { id: Kind; label: string }[] = [
   { id: 'demo', label: 'Démo' },
@@ -32,7 +39,7 @@ interface Draft {
 }
 
 type Row =
-  | { kind: 'choice'; id: 'source' | 'theme'; label: string; value: string }
+  | { kind: 'choice'; id: 'source' | 'theme' | 'guide'; label: string; value: string }
   | {
       kind: 'field';
       id: keyof Draft;
@@ -53,7 +60,7 @@ export function Settings(props: { app: App }) {
     username: source?.kind === 'xtream' ? source.username : '',
     password: '',
     playlistUrl: source?.kind === 'm3u' ? source.playlistUrl : '',
-    epgUrl: source?.kind === 'm3u' ? (source.epgUrl ?? '') : '',
+    epgUrl: source?.epgUrl ?? '',
     groups: settings().groups.join(', '),
   });
   // Prefill the saved password, unless one was typed meanwhile.
@@ -61,6 +68,9 @@ export function Settings(props: { app: App }) {
     if (password) setDraft((d) => (d.password ? d : { ...d, password }));
   });
 
+  const savedGuideIndex = EPG_GUIDES.findIndex((g) => g.url === (source?.epgUrl ?? ''));
+  const [guideIndex, setGuideIndex] = createSignal(savedGuideIndex < 0 ? 3 : savedGuideIndex);
+  const [customEpgUrl, setCustomEpgUrl] = createSignal(source?.epgUrl ?? '');
   const [focus, setFocus] = createSignal(0);
   const [editing, setEditing] = createSignal<Extract<Row, { kind: 'field' }>>();
   const [message, setMessage] = createSignal<{ text: string; error: boolean }>();
@@ -90,18 +100,28 @@ export function Settings(props: { app: App }) {
       );
     }
     if (d.kind === 'm3u') {
-      list.push(
-        { kind: 'field', id: 'playlistUrl', label: 'Adresse de la playlist', value: d.playlistUrl },
-        {
-          kind: 'field',
-          id: 'epgUrl',
-          label: 'Guide XMLTV (facultatif)',
-          value: d.epgUrl,
-          hint: 'Celui de la playlist par défaut',
-        },
-      );
+      list.push({
+        kind: 'field',
+        id: 'playlistUrl',
+        label: 'Adresse de la playlist',
+        value: d.playlistUrl,
+      });
     }
     if (d.kind !== 'demo') {
+      list.push({
+        kind: 'choice',
+        id: 'guide',
+        label: 'Guide TV (EPG)',
+        value: EPG_GUIDES[guideIndex()]!.label,
+      });
+      if (guideIndex() === 3)
+        list.push({
+          kind: 'field',
+          id: 'epgUrl',
+          label: 'Adresse du guide XMLTV',
+          value: d.epgUrl,
+          hint: 'https://exemple.com/guide.xml.gz',
+        });
       list.push({
         kind: 'field',
         id: 'groups',
@@ -148,7 +168,15 @@ export function Settings(props: { app: App }) {
   });
   onCleanup(release);
 
-  const change = (id: 'source' | 'theme', step: 1 | -1) => {
+  const change = (id: 'source' | 'theme' | 'guide', step: 1 | -1) => {
+    if (id === 'guide') {
+      if (guideIndex() === 3) setCustomEpgUrl(draft().epgUrl);
+      const next = (guideIndex() + step + EPG_GUIDES.length) % EPG_GUIDES.length;
+      setGuideIndex(next);
+      setDraft((d) => ({ ...d, epgUrl: EPG_GUIDES[next]!.url ?? customEpgUrl() }));
+      setMessage(undefined);
+      return;
+    }
     if (id === 'theme') {
       props.app.updateSettings({ theme: nextTheme(settings().theme, step) });
       return;
@@ -172,7 +200,12 @@ export function Settings(props: { app: App }) {
     let config: SourceConfig | undefined;
     if (d.kind === 'xtream') {
       if (!trimmed.server || !trimmed.username) return fail('Indique le serveur et l’utilisateur');
-      config = { kind: 'xtream', server: trimmed.server, username: trimmed.username };
+      config = {
+        kind: 'xtream',
+        server: trimmed.server,
+        username: trimmed.username,
+        epgUrl: d.epgUrl.trim() || undefined,
+      };
     } else if (d.kind === 'm3u') {
       if (!trimmed.playlistUrl) return fail('Indique l’adresse de la playlist');
       config = {

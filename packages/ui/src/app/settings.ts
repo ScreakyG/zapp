@@ -2,7 +2,7 @@ import { THEMES, DEFAULT_THEME, type Theme } from '../theme/themes';
 
 /** Where channels come from. Passwords are kept apart, in a SecretStore. */
 export type SourceConfig =
-  | { kind: 'xtream'; server: string; username: string }
+  | { kind: 'xtream'; server: string; username: string; epgUrl?: string }
   | { kind: 'm3u'; playlistUrl: string; epgUrl?: string };
 
 export interface Settings {
@@ -62,7 +62,12 @@ export function sanitize(value: unknown): Settings {
 function sanitizeSource(value: unknown): SourceConfig | undefined {
   const s = value as Record<string, unknown> | undefined;
   if (s?.kind === 'xtream' && typeof s.server === 'string' && typeof s.username === 'string') {
-    return { kind: 'xtream', server: s.server, username: s.username };
+    return {
+      kind: 'xtream',
+      server: s.server,
+      username: s.username,
+      epgUrl: typeof s.epgUrl === 'string' ? s.epgUrl : undefined,
+    };
   }
   if (s?.kind === 'm3u' && typeof s.playlistUrl === 'string') {
     return {

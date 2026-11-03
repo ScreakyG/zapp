@@ -9,6 +9,8 @@ export async function buildSource(settings: Settings, secrets: SecretStore): Pro
   const source = settings.source;
   if (source?.kind === 'xtream') {
     return new XtreamSource({
+      epgUrl: source.epgUrl,
+      store: new IndexedDbEpgStore(),
       server: source.server,
       username: source.username,
       password: (await secrets.get(XTREAM_SECRET)) ?? '',

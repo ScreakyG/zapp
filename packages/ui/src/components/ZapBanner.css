@@ -101,8 +101,10 @@
 }
 
 .zap-num {
-  width: 104px;
+  /* Grows for 4-digit numbers (7050) instead of running into the name. */
+  min-width: 104px;
   flex: none;
+  white-space: nowrap;
   color: var(--accent-text);
 }
 
@@ -165,4 +167,14 @@
 .zap-next {
   margin-top: var(--space-xs);
   color: var(--video-ink-soft);
+}
+
+/*
+ * webOS: backdrop-filter over the hardware video plane leaves the picture short of the bottom
+ * edge while the banner shows (#48). An opaquer scrim without blur replaces the glass.
+ */
+.webos .zap-pill,
+.webos .zap-panel {
+  background: rgba(20, 20, 24, 0.82);
+  backdrop-filter: none;
 }

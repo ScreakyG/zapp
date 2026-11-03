@@ -25,7 +25,12 @@ describe('settings', () => {
       groups: ['FR'],
       favourites: ['xtream:1'],
       lastChannel: 'xtream:1',
-      source: { kind: 'xtream' as const, server: 'http://x', username: 'me' },
+      source: {
+        kind: 'xtream' as const,
+        server: 'http://x',
+        username: 'me',
+        epgUrl: 'https://vhepg.com/strong8k.xml.gz',
+      },
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);

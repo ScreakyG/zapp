@@ -5,6 +5,8 @@ import {
   type CategoryKeywords,
 } from './categories';
 import { overlaps } from './epg';
+import type { EpgStore } from './epg-cache';
+import { XmltvGuide } from './xmltv-guide';
 import { createLimiter } from './limit';
 import type { Channel, Program, Source } from './model';
 
@@ -18,6 +20,9 @@ export interface XtreamConfig {
   keywords?: CategoryKeywords;
   /** Live stream container: Xtream serves both. */
   output?: 'ts' | 'm3u8';
+  /** External XMLTV guide; when absent, use the panel's per-channel API. */
+  epgUrl?: string;
+  store?: EpgStore;
   fetch?: typeof fetch;
 }
 
@@ -64,6 +69,7 @@ const EPG_LIMIT = 12;
 
 /** Xtream Codes API (player_api.php): live channels, categories and per-channel EPG. */
 export class XtreamSource implements Source {
+  private readonly guide?: XmltvGuide;
   private readonly base: string;
   private readonly http: typeof fetch;
   private readonly epg = new Map<string, { at: number; programs: Promise<Program[]> }>();
@@ -77,6 +83,8 @@ export class XtreamSource implements Source {
   constructor(private readonly config: XtreamConfig) {
     this.base = config.server.replace(/\/+$/, '');
     this.http = config.fetch ?? fetch.bind(globalThis);
+    if (config.epgUrl)
+      this.guide = new XmltvGuide(async () => [config.epgUrl!], this.http, config.store);
   }
 
   /** Checks the credentials; throws XtreamError with a user-facing message when refused. */
@@ -133,6 +141,7 @@ export class XtreamSource implements Source {
    * the guide asks for every visible row at once and panels ban bursts.
    */
   async getPrograms(channel: Channel, from: Date, to: Date, signal?: AbortSignal) {
+    if (this.guide) return abortable(this.guide.getPrograms(channel, from, to), signal);
     const streamId = channel.id.replace(/^xtream:/, '');
     const cached = this.epg.get(streamId);
     let programs = cached && Date.now() - cached.at < EPG_TTL ? cached.programs : undefined;

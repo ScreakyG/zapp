@@ -132,7 +132,9 @@ async function start(engine: EngineName, video: VideoLike, url: string): Promise
       // TODO(#23): isLive false for series/VOD .ts files.
       const player = mpegts.createPlayer(
         { type: 'mpegts', isLive: true, url },
-        { liveBufferLatencyChasing: true },
+        // IPTV arrives in bursts. Seeking to 0.5 s from the live edge drains the
+        // playback cushion and causes repeated waiting/seeking on every burst.
+        { liveBufferLatencyChasing: false },
       );
       player.on(mpegts.Events.ERROR, () => media.dispatchEvent(new Event('error')));
       player.attachMediaElement(media);

@@ -19,3 +19,19 @@ pnpm --filter @zapp/desktop dist    # installateur Windows dans release/
 - **F11** bascule le plein écran. Échap reste le « Retour » de l'app
 
 L'installateur n'est pas signé : Windows SmartScreen demandera une confirmation au premier lancement.
+
+## Diagnostic des saccades
+
+`electron perf.cjs` mesure 20 secondes de lecture réelle et échoue si la vidéo ne progresse
+pas, si elle attend des données après le démarrage ou si plus de 2 % des images sont perdues.
+Le rapport `metrics.json` ne contient ni URL ni identifiants. Ce contrôle nécessite une source
+accessible ; une erreur fournisseur doit être distinguée d'une régression de fluidité.
+
+Définir `ZAPP_DIAG_PROFILE` vers une **copie isolée** du profil Windows, comprenant
+`Local Storage`, `Local State` et `secrets.json`. `Local State` est nécessaire au déchiffrement
+des identifiants. Conserver cette copie hors Git et la supprimer après le diagnostic.
+Arrêter la lecture dans les autres instances pour éviter les limites de connexions du fournisseur.
+
+Par défaut, le diagnostic utilise le build UI local et la dernière chaîne enregistrée.
+`ZAPP_DIAG_BUILD` peut désigner le `main.cjs` d'un `app.asar` pour comparer un ancien build ;
+`ZAPP_DIAG_CHANNEL` permet de sélectionner un numéro de chaîne précis.

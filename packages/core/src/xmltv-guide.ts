@@ -7,6 +7,19 @@ import { XmltvReader, type XmltvProgramme } from './xmltv';
 const MAX_AGE = 6 * 3_600_000;
 const HALF_WINDOW = 12 * 3_600_000;
 
+/** Quality variants can share an EPG id; retain every name for alias resolution. */
+export function epgChannelNames(channels: Channel[]): Map<string, string[]> {
+  const result = new Map<string, string[]>();
+  for (const channel of channels) {
+    if (!channel.epgId) continue;
+    result.set(
+      channel.epgId,
+      [...new Set([...(result.get(channel.epgId) ?? []), channel.name])].sort(),
+    );
+  }
+  return result;
+}
+
 /** Shared XMLTV download and cache for M3U and Xtream, independent of the visible rows. */
 export class XmltvGuide {
   private guide?: Promise<Map<string, Program[]>>;
@@ -16,6 +29,7 @@ export class XmltvGuide {
     private readonly http: typeof fetch,
     private readonly store: EpgStore = new MemoryEpgStore(),
     private readonly channels?: () => Promise<ReadonlySet<string>>,
+    private readonly channelNames?: () => Promise<ReadonlyMap<string, string | readonly string[]>>,
   ) {}
 
   async getPrograms(channel: Channel, from: Date, to: Date): Promise<Program[]> {
@@ -39,8 +53,11 @@ export class XmltvGuide {
   private async load() {
     const urls = await this.urls();
     const channels = await this.channels?.();
+    const channelNames = await this.channelNames?.();
     // A filtered guide cannot be reused after changing groups, even at the same URL.
-    const scope = channels ? `\n${JSON.stringify([...channels].sort())}` : '';
+    const scope =
+      (channels ? `\n${JSON.stringify([...channels].sort())}` : '') +
+      (channelNames ? `\nalias-v1:${JSON.stringify([...channelNames].sort())}` : '');
     let lastError: unknown;
     for (const url of urls) {
       const key = url + scope;
@@ -54,7 +71,7 @@ export class XmltvGuide {
         if (!response.ok) throw new Error(`Guide : erreur du serveur (${response.status})`);
         if (!response.body) throw new Error('Guide TV illisible');
         const now = Date.now();
-        const programmes = await readGuideBody(response.body, now, channels);
+        const programmes = await readGuideBody(response.body, now, channels, channelNames);
         this.loadedAt = Date.now();
         await this.store.save(key, programmes).catch(() => {});
         return group(programmes);
@@ -72,12 +89,14 @@ async function readGuideBody(
   body: ReadableStream<Uint8Array>,
   now: number,
   channels?: ReadonlySet<string>,
+  channelNames?: ReadonlyMap<string, string | readonly string[]>,
 ) {
   const reader = body.getReader();
   const xml = new XmltvReader({
     from: new Date(now - HALF_WINDOW),
     to: new Date(now + HALF_WINDOW),
     channels,
+    channelNames,
   });
   const decoder = new TextDecoder();
   let prefix = new Uint8Array(0);

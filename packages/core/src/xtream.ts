@@ -6,7 +6,7 @@ import {
 } from './categories';
 import { overlaps } from './epg';
 import type { EpgStore } from './epg-cache';
-import { XmltvGuide } from './xmltv-guide';
+import { XmltvGuide, epgChannelNames } from './xmltv-guide';
 import { createLimiter } from './limit';
 import type { Channel, Program, Source } from './model';
 
@@ -92,6 +92,10 @@ export class XtreamSource implements Source {
         async () => {
           const channels = await (this.channelsLoaded ?? this.getChannels());
           return new Set(channels.flatMap((c) => (c.epgId ? [c.epgId] : [])));
+        },
+        async () => {
+          const channels = await (this.channelsLoaded ?? this.getChannels());
+          return epgChannelNames(channels);
         },
       );
   }

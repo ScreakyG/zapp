@@ -19,11 +19,17 @@ export interface XmltvFilter {
   to: Date;
   /** Keep only these channel ids; all when omitted. */
   channels?: ReadonlySet<string>;
+  /** Requested EPG ids and their display names, used only when the exact id is absent. */
+  channelNames?: ReadonlyMap<string, string | readonly string[]>;
 }
 
 /** Collects programmes from text chunks; call `push` per chunk, then `end`. */
 export class XmltvReader {
   private buffer = '';
+  private ids = new Set<string>();
+  private names = new Map<string, string | null>();
+  private aliases = new Map<string, string[]>();
+  private mapped = false;
   readonly programmes: XmltvProgramme[] = [];
 
   constructor(private readonly filter: XmltvFilter) {}
@@ -32,8 +38,12 @@ export class XmltvReader {
     this.buffer += chunk;
     let consumed = 0;
     let incomplete = -1;
+    const element = /<(programme|channel)(?=\s|>)/g;
     for (;;) {
-      const open = this.buffer.indexOf('<programme', consumed);
+      element.lastIndex = consumed;
+      const match = element.exec(this.buffer);
+      const isHeader = match?.[1] === 'channel';
+      const open = match?.index ?? -1;
       if (open < 0) break;
       const tagEnd = this.buffer.indexOf('>', open);
       if (tagEnd < 0) {
@@ -45,13 +55,15 @@ export class XmltvReader {
         consumed = tagEnd + 1;
         continue;
       }
-      const close = this.buffer.indexOf('</programme>', tagEnd);
+      const closing = isHeader ? '</channel>' : '</programme>';
+      const close = this.buffer.indexOf(closing, tagEnd);
       if (close < 0) {
         incomplete = open; // Wait for the rest of this element.
         break;
       }
-      this.element(this.buffer.slice(open, close));
-      consumed = close + '</programme>'.length;
+      if (isHeader) this.header(this.buffer.slice(open, close));
+      else this.element(this.buffer.slice(open, close));
+      consumed = close + closing.length;
     }
     // Keep the element still being received, or a few characters in case "<progr" was cut.
     this.buffer =
@@ -64,24 +76,60 @@ export class XmltvReader {
   }
 
   private element(xml: string): void {
+    if (!this.mapped) {
+      this.mapped = true;
+      for (const [id, names] of this.filter.channelNames ?? []) {
+        if (this.ids.has(id)) continue;
+        const matches = new Set(
+          (typeof names === 'string' ? [names] : names)
+            .map((name) => this.names.get(normalizeChannelName(name)))
+            .filter(Boolean),
+        );
+        const target = matches.size === 1 ? [...matches][0] : undefined;
+        if (target) this.aliases.set(target, [...(this.aliases.get(target) ?? []), id]);
+      }
+    }
     const tagEnd = xml.indexOf('>');
     const tag = xml.slice(0, tagEnd);
     const channel = attribute(tag, 'channel');
-    if (!channel || (this.filter.channels && !this.filter.channels.has(channel))) return;
+    if (!channel) return;
+    const targets = new Set(this.aliases.get(channel) ?? []);
+    if (!this.filter.channels || this.filter.channels.has(channel)) targets.add(channel);
+    if (!targets.size) return;
     const start = parseXmltvDate(attribute(tag, 'start'));
     const end = parseXmltvDate(attribute(tag, 'stop'));
     if (!start || !end || !(start < this.filter.to && end > this.filter.from)) return;
     const title = text(xml, 'title');
     if (!title) return;
-    this.programmes.push({
-      channel,
-      title,
-      start,
-      end,
-      description: text(xml, 'desc'),
-      category: text(xml, 'category'),
-    });
+    for (const target of targets)
+      this.programmes.push({
+        channel: target,
+        title,
+        start,
+        end,
+        description: text(xml, 'desc'),
+        category: text(xml, 'category'),
+      });
   }
+
+  private header(xml: string): void {
+    const id = attribute(xml.slice(0, xml.indexOf('>')), 'id');
+    if (!id) return;
+    this.ids.add(id);
+    for (const match of xml.matchAll(/<display-name(?:\s[^>]*)?>([\s\S]*?)<\/display-name>/g)) {
+      const name = normalizeChannelName(decodeEntities(match[1]!));
+      const previous = this.names.get(name);
+      this.names.set(name, previous === undefined || previous === id ? id : null);
+    }
+  }
+}
+
+function normalizeChannelName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/<!\[cdata\[|\]\]>/g, '');
 }
 
 /** Reads a whole XMLTV response body chunk by chunk. */

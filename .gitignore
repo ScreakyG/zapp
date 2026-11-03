@@ -12,3 +12,4 @@ release/
 dist-webos/
 apps/webos/build/
 apps/webos/out/
+apps/desktop/diag.log

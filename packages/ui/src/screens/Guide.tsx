@@ -1,4 +1,4 @@
-import { For, Index, Show, createMemo, createSelector } from 'solid-js';
+import { For, Index, Show, createEffect, createMemo, createSelector } from 'solid-js';
 import { minutesLeft, minutesUntil, status, type Program } from '@zapp/core';
 import { GUIDE_SPAN, type App } from '../app/createApp';
 import { pointerTo } from '../app/pointer';
@@ -43,6 +43,8 @@ export function Guide(props: { app: App }) {
     const last = Math.min(props.app.channels().length, offset() + VISIBLE_ROWS + 1);
     return Array.from({ length: Math.max(0, last - first) }, (_, i) => first + i);
   });
+
+  createEffect(() => props.app.wantPrograms(visibleRows()));
 
   // Only the cells whose focus changes update on a key press.
   const inGrid = () => nav().zone === 'content';

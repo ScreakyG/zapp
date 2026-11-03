@@ -17,6 +17,7 @@ import {
   NumberZapper,
   findChannelByNumber,
   MENU,
+  createLimiter,
   initialNav,
   navigate,
   normalize,
@@ -57,6 +58,11 @@ export interface HomeRowView {
   title: string;
   channels: number[];
 }
+
+/** Up to this many channels, all programs are asked at load (demo); beyond, on demand. */
+const EAGER_EPG_LIMIT = 60;
+/** EPG requests in flight at once, whatever the source. */
+const EPG_CONCURRENCY = 3;
 
 const HOVER_PAUSE = 300;
 const WHEEL_STEP = 50;
@@ -379,32 +385,70 @@ export function createApp(options: AppOptions = {}) {
       if (first && last >= 0 && isInitial(nav())) apply(openPlayer(nav(), last));
       resumed = true;
     });
-    programsLoaded = loadPrograms(list, mine).then(() => {
-      if (mine !== generation || curated) return;
-      showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false, favourites));
-    });
+    startProgramsWindow();
+    // A small list (demo) gets all its programs at once, which also fills "En direct maintenant".
+    // A real panel lists thousands of channels: asking the EPG of all of them at start is the
+    // burst that gets an IP banned, so only the channels on screen are asked (wantPrograms).
+    programsLoaded =
+      list.length <= EAGER_EPG_LIMIT
+        ? requestPrograms(list.map((_, i) => i)).then(() => {
+            if (mine !== generation || curated) return;
+            showRows(buildHomeRows(list, (_, i) => onAir(i).program?.live ?? false, favourites));
+          })
+        : Promise.resolve();
     return true;
   };
 
-  // A channel whose EPG fails simply shows no program; it must not blank the others.
+  // Programs are asked per channel, a few at a time, for the window around now. A channel
+  // whose EPG fails simply shows no program; it must not blank the others.
+  let programsFrom = 0;
   let programsUntil = 0;
-  const loadPrograms = async (list: Channel[], mine: number) => {
-    const from = new Date(Date.now() - PROGRAM_SPAN);
-    const to = new Date(Date.now() + PROGRAM_SPAN);
-    programsUntil = to.getTime();
-    const epgSource = source;
-    const loaded = await Promise.all(
-      list.map((c) => epgSource.getPrograms(c, from, to).catch((): Program[] => [])),
-    );
-    // A reload started meanwhile: these programs belong to the previous source.
-    if (mine !== generation) return;
-    setPrograms(new Map(list.map((c, i) => [c.id, loaded[i] ?? []])));
+  /** Channel ids already asked in the current window. */
+  let requested = new Set<string>();
+  const epgLimit = createLimiter(EPG_CONCURRENCY);
+
+  const startProgramsWindow = () => {
+    programsFrom = Date.now() - PROGRAM_SPAN;
+    programsUntil = Date.now() + PROGRAM_SPAN;
+    requested = new Set();
+    setPrograms(new Map());
   };
 
-  // Slide the window before it runs out. TODO(#15): incremental refresh through the EPG cache.
+  const requestPrograms = (indices: number[]): Promise<void> => {
+    const mine = generation;
+    const epgSource = source;
+    const list = untrack(channels);
+    const todo = indices.flatMap((i) => {
+      const c = list[i];
+      return c && !requested.has(c.id) ? [c] : [];
+    });
+    if (todo.length === 0) return Promise.resolve();
+    for (const c of todo) requested.add(c.id);
+    const from = new Date(programsFrom);
+    const to = new Date(programsUntil);
+    return Promise.all(
+      todo.map((c) =>
+        epgLimit(() => epgSource.getPrograms(c, from, to))
+          .catch((): Program[] => [])
+          .then((list) => {
+            // A reload started meanwhile: these programs belong to the previous source.
+            if (mine !== generation) return;
+            setPrograms((prev) => new Map(prev).set(c.id, list));
+          }),
+      ),
+    ).then(() => undefined);
+  };
+
+  /** Screens declare the channels they show; their programs are fetched if not yet asked. */
+  const wantPrograms = (indices: number[]) => void requestPrograms(indices);
+
+  // Slide the window before it runs out: ask again for the channels asked so far.
   createEffect(() => {
     if (programsUntil && now() > programsUntil - PROGRAM_SPAN / 2) {
-      void loadPrograms(untrack(channels), generation);
+      const list = untrack(channels);
+      const asked = new Set(requested);
+      startProgramsWindow();
+      void requestPrograms(list.flatMap((c, i) => (asked.has(c.id) ? [i] : [])));
     }
   });
 
@@ -510,6 +554,7 @@ export function createApp(options: AppOptions = {}) {
     secrets,
     reload,
     programsLoaded: () => programsLoaded,
+    wantPrograms,
     captureKeys,
     /** Whether the mouse drives the UI (PC); screens add hover and click handlers then. */
     pointer,

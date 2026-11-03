@@ -13,6 +13,12 @@ export function Player(props: { app: App }) {
   const index = () => props.app.nav().player.channel;
   const channel = createMemo(() => props.app.channels()[index()]);
   const air = createMemo(() => props.app.onAir(index()));
+  // The banner shows the current program; neighbours are asked ahead of ↑ ↓ zapping.
+  createEffect(() => {
+    const n = props.app.channels().length;
+    if (n > 0) props.app.wantPrograms([index(), (index() + 1) % n, (index() - 1 + n) % n]);
+  });
+
   /** By value: reloading the channel list must not restart the same stream. */
   const url = createMemo(() => channel()?.streamUrl ?? '');
   /**

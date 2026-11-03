@@ -5,6 +5,7 @@ import {
   type CategoryKeywords,
 } from './categories';
 import { overlaps } from './epg';
+import { createLimiter } from './limit';
 import type { Channel, Program, Source } from './model';
 
 export interface XtreamConfig {
@@ -53,6 +54,9 @@ interface RawListing {
   now_playing?: number;
 }
 
+/** Requests in flight at once to the panel. */
+export const MAX_CONCURRENT_REQUESTS = 3;
+
 /** How long a channel's short EPG is reused before asking the server again. */
 const EPG_TTL = 10 * 60_000;
 /** Listings asked per channel: enough to cover the guide's 2-hour window and beyond. */
@@ -63,6 +67,8 @@ export class XtreamSource implements Source {
   private readonly base: string;
   private readonly http: typeof fetch;
   private readonly epg = new Map<string, { at: number; programs: Promise<Program[]> }>();
+  /** Panels ban an IP that opens many connections at once: requests go out a few at a time. */
+  private readonly limit = createLimiter(MAX_CONCURRENT_REQUESTS);
 
   /**
    * `server` is used as given: server_info's url/port/protocol are deliberately ignored, they are
@@ -169,7 +175,9 @@ export class XtreamSource implements Source {
     });
     let response: Response;
     try {
-      response = await this.http(`${this.base}/player_api.php?${query}`, { signal });
+      response = await this.limit(() =>
+        this.http(`${this.base}/player_api.php?${query}`, { signal }),
+      );
     } catch (error) {
       if (signal?.aborted) throw error;
       throw new XtreamError('Serveur injoignable');

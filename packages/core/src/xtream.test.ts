@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { XtreamError, XtreamSource, decode, numberChannels } from './xtream';
+import {
+  MAX_CONCURRENT_REQUESTS,
+  XtreamError,
+  XtreamSource,
+  decode,
+  numberChannels,
+} from './xtream';
 
 const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 const t = (iso: string) => String(Date.parse(iso) / 1000);
@@ -241,6 +247,31 @@ describe('XtreamSource robustness', () => {
     await expect(
       source.getPrograms(stade!, new Date(0), new Date(), controller.signal),
     ).rejects.toThrow('Aborted');
+  });
+});
+
+describe('XtreamSource request rate', () => {
+  it('never has more than MAX_CONCURRENT_REQUESTS requests in flight', async () => {
+    let active = 0;
+    let peak = 0;
+    const fetch = (async (input: RequestInfo | URL) => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((r) => setTimeout(r, 2));
+      active--;
+      const action = new URL(String(input)).searchParams.get('action') ?? '';
+      return new Response(JSON.stringify(fixtures[action] ?? { epg_listings: [] }));
+    }) as typeof globalThis.fetch;
+    const source = new XtreamSource({ ...config, fetch });
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      id: `xtream:${1000 + i}`,
+      number: String(i),
+      name: String(i),
+      category: 'divert' as const,
+      streamUrl: '',
+    }));
+    await Promise.all(many.map((c) => source.getPrograms(c, new Date(0), new Date())));
+    expect(peak).toBeLessThanOrEqual(MAX_CONCURRENT_REQUESTS);
   });
 });
 

@@ -1,4 +1,4 @@
-import { For, Show, createMemo } from 'solid-js';
+import { For, Show, createEffect, createMemo } from 'solid-js';
 import { minutesLeft } from '@zapp/core';
 import type { App } from '../app/createApp';
 import { pointerTo, replaceAt } from '../app/pointer';
@@ -32,6 +32,15 @@ export function Home(props: { app: App }) {
     const i = focusedChannel();
     return i === undefined ? undefined : props.app.onAir(i);
   });
+
+  // Programs of the tiles rendered (and so of the hero): asked on demand, not for every channel.
+  createEffect(() =>
+    props.app.wantPrograms(
+      rows().flatMap((row, r) =>
+        visibleColumns(row.channels.length, nav().home.cols[r] ?? 0).map((c) => row.channels[c]!),
+      ),
+    ),
+  );
 
   return (
     <div class="home">

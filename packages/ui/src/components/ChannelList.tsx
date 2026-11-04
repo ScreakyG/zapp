@@ -58,9 +58,7 @@ export function ChannelList(props: {
     return i === undefined ? undefined : props.app.onAir(i);
   });
   // Live preview, with sound: one stream at a time, stopped when the screen goes (player, tab).
-  const video = (
-    <video class="clist-preview-video" autoplay playsinline />
-  ) as HTMLVideoElement;
+  const video = (<video class="clist-preview-video" autoplay playsinline />) as HTMLVideoElement;
   const playback = createPlayback(video);
   const url = createMemo(() => channel()?.streamUrl ?? '');
   const [shown, setShown] = createSignal('');

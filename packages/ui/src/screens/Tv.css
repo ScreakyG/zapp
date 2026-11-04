@@ -15,7 +15,7 @@
 }
 
 .tv-search {
-  top: 112px;
+  top: 96px;
   max-width: calc(100% - 2 * var(--space-safe));
   border: 0;
   overflow: hidden;
@@ -25,7 +25,7 @@
 }
 
 .tv-chips {
-  top: 172px;
+  top: 144px;
   right: var(--space-safe);
   display: flex;
 }

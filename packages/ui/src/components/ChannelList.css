@@ -1,7 +1,6 @@
 /*
- * List + preview (TV tab, bouquet screens), on the 1920 × 1080 stage. The prototype's 1280 × 720
- * layout scaled by 1.5: list 540 px wide on the left, 16:9 preview on the right, next program
- * underneath. Only transform and opacity animate (webOS).
+ * List + preview (TV tab, bouquet screens), on the 1280 × 720 stage: list 360 px wide on the
+ * left, 768 × 432 (16:9) preview on the right, next program underneath, as in the prototype.
  */
 .clist-glow,
 .clist-shade {
@@ -13,10 +12,10 @@
 }
 
 .clist-glow {
-  top: -120px;
-  left: -120px;
-  width: 2160px;
-  height: 1320px;
+  top: -80px;
+  left: -80px;
+  width: 1440px;
+  height: 880px;
   object-fit: cover;
   filter: blur(var(--blur-backdrop)) saturate(1.4);
 }
@@ -27,11 +26,11 @@
 
 .clist-list {
   position: absolute;
-  top: 240px;
+  top: 200px;
   left: var(--space-safe);
-  width: 540px;
-  height: 776px;
-  padding: 12px;
+  width: 360px;
+  height: 512px;
+  padding: 8px;
   border-radius: var(--radius-xl);
   background: var(--glass);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
@@ -46,9 +45,9 @@
 .clist-item {
   position: absolute;
   left: 0;
-  width: 516px;
-  height: 84px;
-  padding: 0 20px 0 18px;
+  width: 344px;
+  height: 56px;
+  padding: 0 14px 0 12px;
   display: flex;
   align-items: center;
   border-radius: var(--radius-lg);
@@ -71,7 +70,7 @@
 }
 
 .clist-number {
-  width: 44px;
+  width: 30px;
   flex: none;
   font-weight: 600;
   color: var(--ink-muted);
@@ -85,11 +84,11 @@
 }
 
 .clist-logo {
-  width: 96px;
-  height: 54px;
+  width: 64px;
+  height: 36px;
   flex: none;
-  margin-right: 18px;
-  border-radius: var(--radius-md);
+  margin-right: 12px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -99,8 +98,8 @@
 }
 
 .clist-logo img {
-  max-width: 84px;
-  max-height: 44px;
+  max-width: 56px;
+  max-height: 30px;
   object-fit: contain;
 }
 
@@ -122,16 +121,16 @@
 }
 
 .clist-star {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   flex: none;
-  margin-left: 12px;
+  margin-left: 8px;
   fill: currentColor;
   color: var(--ink-muted);
 }
 
 .clist-empty {
-  padding: 180px 40px 0;
+  padding: 120px 28px 0;
   text-align: center;
 }
 
@@ -141,10 +140,10 @@
 
 .clist-preview {
   position: absolute;
-  top: 240px;
-  left: 640px;
-  width: 1216px;
-  height: 684px;
+  top: 200px;
+  left: 448px;
+  width: 768px;
+  height: 432px;
   border-radius: var(--radius-xl);
   overflow: hidden;
   background: var(--surface);
@@ -155,8 +154,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 1216px;
-  height: 684px;
+  width: 768px;
+  height: 432px;
   object-fit: cover;
 }
 
@@ -185,9 +184,9 @@
 
 .clist-tag {
   position: absolute;
-  top: 26px;
-  left: 26px;
-  padding: 7px 18px;
+  top: 18px;
+  left: 18px;
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
   background: rgba(20, 20, 24, 0.45);
   color: #f4f4f6;
@@ -197,9 +196,9 @@
 
 .clist-preview-info {
   position: absolute;
-  left: 42px;
-  right: 42px;
-  bottom: 36px;
+  left: 28px;
+  right: 28px;
+  bottom: 24px;
   color: #f4f4f6;
 }
 
@@ -209,11 +208,11 @@
 }
 
 .clist-preview-name > * + * {
-  margin-left: 16px;
+  margin-left: 12px;
 }
 
 .clist-preview-title {
-  margin-top: 4px;
+  margin-top: 2px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -221,7 +220,7 @@
 }
 
 .clist-preview-time {
-  margin-top: 18px;
+  margin-top: 12px;
   display: flex;
   align-items: center;
   font-weight: 600;
@@ -230,9 +229,9 @@
 
 .clist-progress {
   flex: 1;
-  height: 6px;
-  margin: 0 20px;
-  border-radius: 6px;
+  height: 5px;
+  margin: 0 14px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.25);
   overflow: hidden;
 }
@@ -256,11 +255,11 @@
 
 .clist-next {
   position: absolute;
-  top: 948px;
-  left: 640px;
-  width: 1216px;
-  height: 68px;
-  padding: 0 32px;
+  top: 648px;
+  left: 448px;
+  width: 768px;
+  height: 64px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   border-radius: var(--radius-xl);
@@ -271,12 +270,12 @@
 .clist-next-text {
   flex: 1;
   min-width: 0;
-  margin-right: 32px;
+  margin-right: 24px;
 }
 
 .clist-next-title {
-  font-size: 20px;
-  line-height: 26px;
+  font-size: 17px;
+  line-height: 22px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -289,8 +288,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 1216px;
-  height: 684px;
+  width: 768px;
+  height: 432px;
 }
 
 .clist-preview-video {
@@ -310,9 +309,9 @@
 
 /* Real channels' pictures are logos: centred, not stretched over the preview. */
 .clist-preview-image.logo {
-  top: 160px;
-  left: 408px;
-  width: 400px;
-  height: 225px;
+  top: 100px;
+  left: 244px;
+  width: 280px;
+  height: 158px;
   object-fit: contain;
 }

@@ -14,8 +14,8 @@ import './ChannelList.css';
  */
 const PREVIEW_DELAY = 700;
 
-/** Item pitch in stage pixels (84 px item + 6 px gap). */
-const ITEM_PITCH = 90;
+/** Item pitch in stage pixels (56 px item + 4 px gap). */
+const ITEM_PITCH = 60;
 
 /**
  * Channel list on the left, preview of the focused channel on the right and its next program

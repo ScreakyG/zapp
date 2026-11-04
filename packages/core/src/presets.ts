@@ -240,14 +240,14 @@ const TNT_STATIONS: Record<string, Station> = {
   cmitv: { name: 'CMI TV', groups: [] },
 };
 
-/** First number of each bouquet; its channels follow in catalogue order. */
+/** First number of each bouquet: 20 numbers each, more than any curated bouquet holds. */
 const BOUQUET_BASE: Record<Exclude<FrenchBouquet, 'tnt'>, number> = {
   canal: 40,
   ligue1: 101,
-  bein: 110,
-  dazn: 120,
-  'rmc-sport': 130,
-  rmc: 140,
+  bein: 121,
+  dazn: 141,
+  'rmc-sport': 161,
+  rmc: 181,
 };
 /** TNT channels without an official number come after the official ones. */
 const TNT_EXTRA_BASE = 30;

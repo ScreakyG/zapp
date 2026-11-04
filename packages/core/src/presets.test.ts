@@ -335,10 +335,10 @@ describe('France lineup', () => {
       ['040', 'Canal+ Cinéma', 'canal', ['cinema']],
       ['041', 'Canal+ Sport 360', 'canal', ['sport']],
       ['101', 'Ligue 1+ 2', 'ligue1', ['sport']],
-      ['110', 'beIN Sports 2', 'bein', ['sport']],
-      ['111', 'beIN Sports 1', 'bein', ['sport']],
-      ['120', 'DAZN 1', 'dazn', ['sport']],
-      ['130', 'RMC Sport 1', 'rmc-sport', ['sport']],
+      ['121', 'beIN Sports 2', 'bein', ['sport']],
+      ['122', 'beIN Sports 1', 'bein', ['sport']],
+      ['141', 'DAZN 1', 'dazn', ['sport']],
+      ['161', 'RMC Sport 1', 'rmc-sport', ['sport']],
     ]);
   });
 
@@ -355,5 +355,35 @@ describe('France lineup', () => {
   it('never gives two channels the same number', () => {
     const twice = frenchLineup([ch('FR: CANAL+ RAW', 30), ch('FR: CANAL+ ᴴᴰ', 33)]);
     expect(twice.channels.map((c) => c.number)).toEqual(['004', '040']);
+  });
+});
+
+describe('France lineup ranges', () => {
+  it('starts every bouquet at its own number even when Ligue 1+ and DAZN are full', () => {
+    const ch = (name: string, number: number, group?: string): Channel => ({
+      id: `id:${number}`,
+      name,
+      group,
+      number: String(number),
+      category: 'divert',
+      streamUrl: '',
+    });
+    const list = [
+      ...Array.from({ length: 10 }, (_, i) => ch(`FR Ligue 1+ ${i + 1} RAW`, 18307 + i)),
+      ...Array.from({ length: 12 }, (_, i) =>
+        ch(`FR: DAZN ${i + 1} ᴿᴬᵂ`, 19472 + i, 'FR| DAZN LA LIGA PPV'),
+      ),
+      ch('VIP: beIN Sports 1 RAW', 18245),
+      ch('VIP: RMCSPORT 1 ᴿᴬᵂ', 18337),
+    ];
+    const first = (name: string) =>
+      frenchLineup(list).channels.find((c) => c.name === name)?.number;
+    expect([
+      first('Ligue 1+ 10'),
+      first('beIN Sports 1'),
+      first('DAZN 1'),
+      first('DAZN 12'),
+      first('RMC Sport 1'),
+    ]).toEqual(['110', '121', '141', '152', '161']);
   });
 });

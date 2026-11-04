@@ -81,7 +81,7 @@ describe('createApp', () => {
     try {
       await flush();
       expect(app.channels().map((c) => [c.id, c.name, c.number])).toEqual([
-        [raw.id, 'DAZN 1', '120'],
+        [raw.id, 'DAZN 1', '141'],
       ]);
       expect(app.homeRows()).toEqual([{ title: 'DAZN', channels: [0] }]);
       expect(app.guideRows()).toHaveLength(1);

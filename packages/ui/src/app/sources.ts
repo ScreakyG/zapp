@@ -14,14 +14,14 @@ export async function buildSource(settings: Settings, secrets: SecretStore): Pro
       server: source.server,
       username: source.username,
       password: (await secrets.get(XTREAM_SECRET)) ?? '',
-      groups: settings.groups,
+      groups: settings.channelPreset === 'france' ? [] : settings.groups,
     });
   }
   if (source?.kind === 'm3u') {
     return new M3uSource({
       playlistUrl: source.playlistUrl,
       epgUrl: source.epgUrl,
-      groups: settings.groups,
+      groups: settings.channelPreset === 'france' ? [] : settings.groups,
       store: new IndexedDbEpgStore(),
     });
   }

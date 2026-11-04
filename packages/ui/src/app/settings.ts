@@ -1,4 +1,5 @@
 import { THEMES, DEFAULT_THEME, type Theme } from '../theme/themes';
+import type { ChannelPreset } from '@zapp/core';
 
 /** Where channels come from. Passwords are kept apart, in a SecretStore. */
 export type SourceConfig =
@@ -9,6 +10,8 @@ export interface Settings {
   theme: Theme;
   /** Provider groups to keep ("FR"); empty keeps all. */
   groups: string[];
+  /** Missing in older settings means the complete provider catalogue. */
+  channelPreset?: ChannelPreset;
   /** Channel ids, in display order. */
   favourites: string[];
   /** Id of the channel watched last, reopened at start-up. */
@@ -53,6 +56,7 @@ export function sanitize(value: unknown): Settings {
   return {
     theme: THEMES.includes(v.theme as Theme) ? (v.theme as Theme) : DEFAULT_THEME,
     groups: strings(v.groups),
+    channelPreset: v.channelPreset === 'france' ? 'france' : undefined,
     favourites: strings(v.favourites),
     lastChannel: typeof v.lastChannel === 'string' ? v.lastChannel : undefined,
     source: sanitizeSource(v.source),

@@ -12,6 +12,7 @@ import {
   CATEGORIES,
   DemoSource,
   buildHomeRows,
+  frenchLineup,
   type HomeRowSpec,
   type Source,
   NumberZapper,
@@ -170,6 +171,9 @@ export function createApp(options: AppOptions = {}) {
   const [loading, setLoading] = createSignal(false);
 
   const [channels, setChannels] = createSignal<Channel[]>([]);
+  const [mosaicFilters, setMosaicFilters] =
+    createSignal<{ id: string | null; label: string }[]>(MOSAIC_FILTERS);
+  let bouquetMembers: Map<string, Set<string>> | undefined;
   const [searchQuery, setSearchQuery] = createSignal('');
   const searchable = (value: string) =>
     value
@@ -188,9 +192,10 @@ export function createApp(options: AppOptions = {}) {
   const [programs, setPrograms] = createSignal<Map<string, Program[]>>(new Map());
 
   const mosaicChannels = (filter: number) => {
-    const id = MOSAIC_FILTERS[filter]?.id;
+    const id = mosaicFilters()[filter]?.id;
     return channels().flatMap((c, i) =>
-      (!id || c.category === id) && searchTerms().every((term) => searchIndex()[i]!.includes(term))
+      (!id || (bouquetMembers ? bouquetMembers.get(id)?.has(c.id) : c.category === id)) &&
+      searchTerms().every((term) => searchIndex()[i]!.includes(term))
         ? [i]
         : [],
     );
@@ -214,7 +219,7 @@ export function createApp(options: AppOptions = {}) {
     homeRows: homeRows().map((r) => r.channels),
     guidePrograms: (row: number) => guideSpans()[row] ?? [],
     guideWindowStart: guideStart(),
-    mosaicFilterCount: MOSAIC_FILTERS.length,
+    mosaicFilterCount: mosaicFilters().length,
     mosaicColumns: MOSAIC_COLUMNS,
     mosaicChannels,
   }));
@@ -342,7 +347,7 @@ export function createApp(options: AppOptions = {}) {
         candidate?.settings ?? settings(),
         candidate?.secrets ?? secrets,
       );
-      return await load(mine, next);
+      return await load(mine, next, candidate?.settings ?? settings());
     } catch (error) {
       if (mine !== generation) return false;
       console.error('Loading channels failed', error);
@@ -356,9 +361,17 @@ export function createApp(options: AppOptions = {}) {
   /** Settles when the programs of the current load are in (tests, background work). */
   let programsLoaded: Promise<void> = Promise.resolve();
 
-  const load = async (mine: number, next: AppSource): Promise<boolean> => {
-    const list = await next.getChannels();
+  const load = async (mine: number, next: AppSource, config: Settings): Promise<boolean> => {
+    const catalogue = await next.getChannels();
     if (mine !== generation) return false;
+    const lineup = config.channelPreset === 'france' ? frenchLineup(catalogue) : undefined;
+    const bouquets = lineup?.bouquets;
+    const list = lineup ? lineup.channels : catalogue;
+    if (lineup && list.length === 0) {
+      throw new Error(
+        'Aucune chaîne reconnue pour le preset France. Choisissez Toutes les chaînes pour consulter votre catalogue.',
+      );
+    }
     // Only now that it works: a failed reload keeps the previous source and channels.
     source = next;
     const first = !resumed;
@@ -373,9 +386,21 @@ export function createApp(options: AppOptions = {}) {
     // Curated rows when the source has them (demo). Otherwise show the category rows at once,
     // then add "En direct maintenant" once the EPG says what is live.
     // TODO(#15): refresh the live row as programs change, keeping the focus clamped.
-    const curated = source.homeRows?.();
-    const favourites = settings().favourites;
+    const favourites = config.favourites;
+    const favouriteIds = favourites.filter((id) => index.has(id));
+    const curated = bouquets
+      ? [
+          ...(favouriteIds.length ? [{ title: 'Chaînes favorites', channels: favouriteIds }] : []),
+          ...bouquets,
+        ]
+      : source.homeRows?.();
     batch(() => {
+      bouquetMembers = bouquets && new Map(bouquets.map((b) => [b.id, new Set(b.channels)]));
+      setMosaicFilters(
+        bouquets
+          ? [{ id: null, label: 'Toutes' }, ...bouquets.map((b) => ({ id: b.id, label: b.label }))]
+          : MOSAIC_FILTERS,
+      );
       setPrograms(new Map());
       setChannels(list);
       showRows(curated ?? buildHomeRows(list, () => false, favourites));
@@ -634,6 +659,7 @@ export function createApp(options: AppOptions = {}) {
     banner,
     zap,
     mosaicChannels,
+    mosaicFilters,
     searchQuery,
     search: (query: string) =>
       batch(() => {

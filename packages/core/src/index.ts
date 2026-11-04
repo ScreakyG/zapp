@@ -5,6 +5,7 @@ export * from './demo';
 export * from './home';
 export * from './nav';
 export * from './categories';
+export * from './presets';
 export * from './xtream';
 export * from './m3u';
 export * from './m3u-source';

@@ -9,7 +9,7 @@ import {
 } from 'solid-js';
 import { toAction } from '@zapp/core';
 import { TextEntry } from '../components/TextEntry';
-import { MOSAIC_COLUMNS, MOSAIC_FILTERS, type App } from '../app/createApp';
+import { MOSAIC_COLUMNS, type App } from '../app/createApp';
 import { pointerTo } from '../app/pointer';
 import { ChannelTileOf } from '../components/ChannelTileOf';
 import './Mosaic.css';
@@ -39,7 +39,9 @@ export function Mosaic(props: { app: App }) {
   // Memo: a key press must not re-filter every channel.
   const filter = createMemo(() => nav().mosaic.filter);
   const list = createMemo(() => props.app.mosaicChannels(filter()));
-  const counts = createMemo(() => MOSAIC_FILTERS.map((_, i) => props.app.mosaicChannels(i).length));
+  const counts = createMemo(() =>
+    props.app.mosaicFilters().map((_, i) => props.app.mosaicChannels(i).length),
+  );
 
   const row = () => Math.floor(nav().mosaic.idx / MOSAIC_COLUMNS);
   const rowCount = () => Math.ceil(list().length / MOSAIC_COLUMNS);
@@ -73,7 +75,7 @@ export function Mosaic(props: { app: App }) {
           : 'Rechercher une chaîne par nom ou numéro'}
       </button>
       <div class="mosaic-chips">
-        <For each={MOSAIC_FILTERS}>
+        <For each={props.app.mosaicFilters()}>
           {(chip, i) => (
             <span
               {...pointerTo(

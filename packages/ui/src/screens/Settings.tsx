@@ -1,5 +1,5 @@
-import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js';
-import { XtreamError, XtreamSource, toAction } from '@zapp/core';
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from 'solid-js';
+import { XtreamError, XtreamSource, toAction, type ChannelPreset } from '@zapp/core';
 import type { App } from '../app/createApp';
 import type { SourceConfig } from '../app/settings';
 import { XTREAM_SECRET } from '../app/sources';
@@ -36,10 +36,11 @@ interface Draft {
   playlistUrl: string;
   epgUrl: string;
   groups: string;
+  channelPreset: ChannelPreset;
 }
 
 type Row =
-  | { kind: 'choice'; id: 'source' | 'theme' | 'guide'; label: string; value: string }
+  | { kind: 'choice'; id: 'source' | 'theme' | 'guide' | 'preset'; label: string; value: string }
   | {
       kind: 'field';
       id: keyof Draft;
@@ -62,6 +63,7 @@ export function Settings(props: { app: App }) {
     playlistUrl: source?.kind === 'm3u' ? source.playlistUrl : '',
     epgUrl: source?.epgUrl ?? '',
     groups: settings().groups.join(', '),
+    channelPreset: settings().channelPreset ?? 'all',
   });
   // Prefill the saved password, unless one was typed meanwhile.
   void props.app.secrets.get(XTREAM_SECRET).then((password) => {
@@ -122,15 +124,22 @@ export function Settings(props: { app: App }) {
           value: d.epgUrl,
           hint: 'https://exemple.com/guide.xml.gz',
         });
-      list.push({
-        kind: 'field',
-        id: 'groups',
-        label: 'Groupes conservés',
-        value: d.groups,
-        hint: 'Tous · ex. FR, BE',
-      });
+      if (d.channelPreset !== 'france')
+        list.push({
+          kind: 'field',
+          id: 'groups',
+          label: 'Groupes conservés',
+          value: d.groups,
+          hint: 'Tous · ex. FR, BE',
+        });
     }
     list.push(
+      {
+        kind: 'choice',
+        id: 'preset',
+        label: 'Preset de chaînes',
+        value: d.channelPreset === 'france' ? 'France · par bouquets' : 'Toutes les chaînes',
+      },
       { kind: 'choice', id: 'theme', label: 'Thème', value: THEME_LABELS[settings().theme] },
       { kind: 'button', id: 'save', label: 'Tester et enregistrer' },
       { kind: 'button', id: 'reload', label: 'Recharger les chaînes' },
@@ -168,7 +177,14 @@ export function Settings(props: { app: App }) {
   });
   onCleanup(release);
 
-  const change = (id: 'source' | 'theme' | 'guide', step: 1 | -1) => {
+  const change = (id: 'source' | 'theme' | 'guide' | 'preset', step: 1 | -1) => {
+    if (busy()) return;
+    if (id === 'preset') {
+      setDraft((d) => ({ ...d, channelPreset: d.channelPreset === 'france' ? 'all' : 'france' }));
+      setFocus(rows().findIndex((r) => r.id === 'preset'));
+      setMessage(undefined);
+      return;
+    }
     if (id === 'guide') {
       if (guideIndex() === 3) setCustomEpgUrl(draft().epgUrl);
       const next = (guideIndex() + step + EPG_GUIDES.length) % EPG_GUIDES.length;
@@ -223,7 +239,8 @@ export function Settings(props: { app: App }) {
         account = info.expires ? ` · jusqu’au ${info.expires.toLocaleDateString('fr-FR')}` : '';
       }
       // Try the new source first; nothing is saved unless its channels load.
-      const candidate = { ...settings(), source: config, groups };
+      const channelPreset = d.channelPreset === 'france' ? ('france' as const) : undefined;
+      const candidate = { ...settings(), source: config, groups, channelPreset };
       const draftSecrets = {
         get: async () => (d.kind === 'xtream' ? d.password : undefined),
         set: async () => {},
@@ -236,6 +253,7 @@ export function Settings(props: { app: App }) {
       props.app.updateSettings({
         source: config,
         groups,
+        channelPreset,
         ...(sameSource ? {} : { lastChannel: undefined }),
       });
       setMessage({
@@ -270,6 +288,11 @@ export function Settings(props: { app: App }) {
         <For each={rows()}>
           {(row, i) => (
             <div
+              ref={(element) =>
+                createEffect(() => {
+                  if (inContent() && focus() === i()) element.scrollIntoView({ block: 'nearest' });
+                })
+              }
               {...(props.app.pointer
                 ? {
                     onMouseMove: () => {
@@ -306,6 +329,12 @@ export function Settings(props: { app: App }) {
           )}
         </For>
       </div>
+      <Show when={draft().channelPreset === 'france'}>
+        <p class="body settings-preset-hint">
+          France : TNT, Canal+, Ligue 1+, beIN Sports, DAZN, RMC Sport et RMC. Seuls les bouquets
+          reconnus dans votre source sont affichés. Validez avec Tester et enregistrer.
+        </p>
+      </Show>
       <Show when={message()}>
         {(m) => (
           <p class="body settings-message" classList={{ error: m().error }}>

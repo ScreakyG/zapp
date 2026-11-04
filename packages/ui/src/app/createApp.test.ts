@@ -67,6 +67,171 @@ function start(settings: Partial<Settings>, sources: Source[]) {
 }
 
 describe('createApp', () => {
+  it('includes only selected DAZN RAW channels on home, guide and mosaic, excluding PPV', async () => {
+    const raw = { ...channel('FR: DAZN 1 ᴿᴬᵂ', '19472'), group: 'FR| DAZN LA LIGA PPV' };
+    const ppv = {
+      ...channel('NO EVENT STREAMING NOW - | 8K EXCLUSIVE | FR: DAZN PPV 1', '19372'),
+      group: 'FR| DAZN PPV',
+    };
+    const source: Source = {
+      getChannels: async () => [raw, ppv, channel('##### DAZN PPV FR #####', '19371')],
+      getPrograms: async () => [],
+    };
+    const { app, dispose } = start({ channelPreset: 'france' }, [source]);
+    try {
+      await flush();
+      expect(app.channels().map((c) => [c.id, c.name, c.number])).toEqual([
+        [raw.id, 'DAZN 1', '141'],
+      ]);
+      expect(app.homeRows()).toEqual([{ title: 'DAZN', channels: [0] }]);
+      expect(app.guideRows()).toHaveLength(1);
+      expect(app.mosaicFilters().map((f) => f.id)).toEqual([null, 'dazn']);
+      expect(app.mosaicChannels(1)).toEqual([0]);
+    } finally {
+      dispose();
+    }
+  });
+
+  it('shows separate deduplicated RMC bouquets on home, mosaic and guide', async () => {
+    const sport = channel('VIP: RMC Sport 1 ᴿᴬᵂ', '18336');
+    const story = channel('FR: RMC Story RAW', '102');
+    const source: Source = {
+      getChannels: async () => [
+        channel('RMC Sport 1 FHD', '18337'),
+        sport,
+        story,
+        channel('RMC Story HD', '103'),
+      ],
+      getPrograms: async () => [],
+    };
+    const { app, dispose } = start({ channelPreset: 'france' }, [source]);
+    try {
+      await flush();
+      // Renamed and renumbered: RMC Story (023) now comes before RMC Sport 1 (130).
+      expect(app.channels().map((c) => [c.id, c.name])).toEqual([
+        [story.id, 'RMC Story'],
+        [sport.id, 'RMC Sport 1'],
+      ]);
+      expect(app.guideRows()).toHaveLength(2);
+      expect(app.homeRows()).toEqual([
+        { title: 'RMC Sport', channels: [1] },
+        { title: 'RMC', channels: [0] },
+      ]);
+      expect(app.mosaicFilters().map((f) => f.id)).toEqual([null, 'rmc-sport', 'rmc']);
+      expect(app.mosaicChannels(1)).toEqual([1]);
+      expect(app.mosaicChannels(2)).toEqual([0]);
+    } finally {
+      dispose();
+    }
+  });
+
+  it('shows provider Ligue 1+ superscript RAW channels on home and mosaic', async () => {
+    const expected = Array.from({ length: 10 }, (_, i) => ({
+      ...channel(`VIP: LIGUE 1+ ${i + 1} ᴿᴬᵂ`, String(18307 + i)),
+      id: `xtream:${1686911 - i}`,
+      group: 'FR| FRANCE SPORT ⱽᴵᴾ ᴿᴬᵂ',
+    }));
+    const source: Source = {
+      getChannels: async () => [channel('TF1', '17990'), ...expected],
+      getPrograms: async () => [],
+    };
+    const { app, dispose } = start({ channelPreset: 'france' }, [source]);
+    try {
+      await flush();
+      expect(app.homeRows().find((r) => r.title === 'Ligue 1+')?.channels).toHaveLength(10);
+      const filter = app.mosaicFilters().findIndex((f) => f.id === 'ligue1');
+      expect(filter).toBeGreaterThan(0);
+      expect(app.mosaicChannels(filter).map((i) => app.channels()[i]?.id)).toEqual(
+        expected.map((c) => c.id),
+      );
+    } finally {
+      dispose();
+    }
+  });
+
+  it('applies a candidate France preset to home, guide and mosaic, then restores the catalogue', async () => {
+    const list = [
+      channel('FR | TF1 HD', '001'),
+      channel('FR | Canal+ Sport UHD', '002'),
+      channel('FR | Ligue 1+ 1 RAW', '18307'),
+      channel('VIP: FR | beIN Sports 1', '18245'),
+      channel('FR | RMC Sport 1', '18336'),
+      channel('US | beIN Sports 1', '006'),
+      channel('Unknown', '007'),
+    ];
+    const source: Source = { getChannels: async () => list, getPrograms: async () => [] };
+    const { app, dispose } = start({ favourites: [list[3]!.id] }, [source]);
+    try {
+      await flush();
+      expect(app.channels()).toHaveLength(7);
+      expect(
+        await app.reload({
+          settings: { ...app.settings(), channelPreset: 'france' },
+          secrets: app.secrets,
+        }),
+      ).toBe(true);
+      await app.programsLoaded();
+      expect(app.settings().channelPreset).toBeUndefined(); // candidate is not saved yet
+      expect(app.channels().map((c) => c.id)).toEqual(list.slice(0, 5).map((c) => c.id));
+      expect(app.channels().map((c) => c.name)).toEqual([
+        'TF1',
+        'Canal+ Sport',
+        'Ligue 1+ 1',
+        'beIN Sports 1',
+        'RMC Sport 1',
+      ]);
+      expect(app.guideRows()).toHaveLength(5);
+      expect(app.homeRows().map((r) => r.title)).toEqual([
+        'Chaînes favorites',
+        'TNT',
+        'Canal+',
+        'Ligue 1+',
+        'beIN Sports',
+        'RMC Sport',
+      ]);
+      expect(app.homeRows()[0]?.channels).toEqual([3]);
+      expect(app.mosaicFilters().map((f) => f.id)).toEqual([
+        null,
+        'tnt',
+        'canal',
+        'ligue1',
+        'bein',
+        'rmc-sport',
+      ]);
+      expect(app.mosaicChannels(4)).toEqual([3]);
+      app.search('sport');
+      expect(app.mosaicChannels(2)).toEqual([1]);
+      expect(app.mosaicChannels(1)).toEqual([]);
+      await app.reload();
+      expect(app.channels()).toEqual(list);
+      expect(app.mosaicFilters()[1]?.id).toBe('sport');
+    } finally {
+      dispose();
+    }
+  });
+
+  it('keeps the current catalogue when the France preset matches nothing', async () => {
+    const source: Source = {
+      getChannels: async () => [channel('Unknown', '001')],
+      getPrograms: async () => [],
+    };
+    const { app, dispose } = start({}, [source]);
+    try {
+      await flush();
+      expect(
+        await app.reload({
+          settings: { ...app.settings(), channelPreset: 'france' },
+          secrets: app.secrets,
+        }),
+      ).toBe(false);
+      expect(app.channels()[0]?.id).toBe('Unknown');
+      expect(app.loadError()).toContain('Aucune chaîne reconnue');
+      expect(app.mosaicFilters()[1]?.id).toBe('sport');
+    } finally {
+      dispose();
+    }
+  });
+
   it('searches names and numbers, combines categories, and tunes the matching channel', async () => {
     const a = controlledSource([
       channel('TF1', '001'),

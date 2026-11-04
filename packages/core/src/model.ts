@@ -23,6 +23,12 @@ export interface Channel {
   number: string;
   name: string;
   category: Category;
+  /** Original provider group, used to disambiguate regional presets. */
+  group?: string;
+  /** Paid bouquet (app) the channel comes from, France preset only; none for the TNT. */
+  bouquet?: string;
+  /** Themed groups of the TV tab (France preset only), mixing TNT and bouquet channels. */
+  groups?: readonly string[];
   image?: string;
   logo?: string;
   /** Empty when the source has no stream (demo channels). */

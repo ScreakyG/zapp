@@ -145,6 +145,7 @@ export class XtreamSource implements Source {
         rawNumber: s.num,
         name: String(s.name ?? '').trim(),
         category: categorize(groupOf(s), keywords),
+        group: groupOf(s),
         logo: s.stream_icon || undefined,
         image: s.stream_icon || undefined,
         streamUrl: this.streamUrl(s.stream_id),

@@ -4,6 +4,7 @@ import {
   loadSettings,
   localSecretStore,
   saveSettings,
+  sanitize,
   type KeyValueStorage,
 } from './settings';
 
@@ -18,6 +19,13 @@ function memoryStorage(): KeyValueStorage & { data: Map<string, string> } {
 }
 
 describe('settings', () => {
+  it('persists the France preset and tolerates old or unknown presets', () => {
+    const storage = memoryStorage();
+    saveSettings({ ...DEFAULT_SETTINGS, channelPreset: 'france' }, storage);
+    expect(loadSettings(storage).channelPreset).toBe('france');
+    expect(sanitize({ channelPreset: 'unknown' }).channelPreset).toBeUndefined();
+    expect(sanitize({}).channelPreset).toBeUndefined();
+  });
   it('round-trips through storage', () => {
     const storage = memoryStorage();
     const settings = {

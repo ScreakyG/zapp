@@ -1,11 +1,18 @@
-import { For, Show, createEffect, createMemo } from 'solid-js';
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from 'solid-js';
 import type { NavState } from '@zapp/core';
 import { TV_LIST_LEAD, TV_LIST_ROWS, type App } from '../app/createApp';
 import { pointerTo } from '../app/pointer';
 import { formatTime } from '../format';
 import { imageUrl } from '../images';
+import { createPlayback } from '../player/playback';
 import { LiveBadge } from './LiveBadge';
 import './ChannelList.css';
+
+/**
+ * The preview starts the focused channel's stream once the focus has rested this long, so
+ * holding ↑ ↓ does not open a stream per channel (panels ban bursts of connections).
+ */
+const PREVIEW_DELAY = 700;
 
 /** Item pitch in stage pixels (84 px item + 6 px gap). */
 const ITEM_PITCH = 90;
@@ -50,6 +57,29 @@ export function ChannelList(props: {
     const i = current();
     return i === undefined ? undefined : props.app.onAir(i);
   });
+  // Live preview: muted, one stream at a time, stopped when the screen goes (player, tab).
+  const video = (
+    <video class="clist-preview-video" autoplay muted playsinline />
+  ) as HTMLVideoElement;
+  const playback = createPlayback(video);
+  const url = createMemo(() => channel()?.streamUrl ?? '');
+  const [shown, setShown] = createSignal('');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  createEffect(() => {
+    const u = url();
+    clearTimeout(timer);
+    if (u === shown()) return;
+    playback.stop();
+    setShown('');
+    if (u)
+      timer = setTimeout(() => {
+        setShown(u);
+        void playback.play(u);
+      }, PREVIEW_DELAY);
+  });
+  onCleanup(() => clearTimeout(timer));
+  const live = () => shown() !== '' && playback.status().state === 'playing';
+
   const favourite = (i: number) =>
     props.app.settings().favourites.includes(props.app.channels()[i]?.id ?? '');
 
@@ -105,11 +135,21 @@ export function ChannelList(props: {
       </div>
 
       <div class="clist-preview">
+        <div class="clist-preview-live" classList={{ hidden: !live() }}>
+          {video}
+        </div>
         <Show when={channel()}>
           {(c) => (
             <>
               <Show when={imageUrl(c().image)}>
-                {(src) => <img class="clist-preview-image" src={src()} alt="" />}
+                {(src) => (
+                  <img
+                    class="clist-preview-image"
+                    classList={{ logo: !!c().streamUrl, hidden: live() }}
+                    src={src()}
+                    alt=""
+                  />
+                )}
               </Show>
               <div class="clist-preview-shade" />
               <span class="clist-tag caption">{props.tag(current()!)}</span>

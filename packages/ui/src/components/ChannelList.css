@@ -282,3 +282,37 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Live preview: the stream fades in over the picture once it plays. */
+.clist-preview-live,
+.clist-preview-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1216px;
+  height: 684px;
+}
+
+.clist-preview-video {
+  object-fit: cover;
+  background: #000;
+}
+
+.clist-preview-live,
+.clist-preview-image {
+  transition: opacity var(--focus-duration) var(--focus-easing);
+}
+
+.clist-preview-live.hidden,
+.clist-preview-image.hidden {
+  opacity: 0;
+}
+
+/* Real channels' pictures are logos: centred, not stretched over the preview. */
+.clist-preview-image.logo {
+  top: 160px;
+  left: 408px;
+  width: 400px;
+  height: 225px;
+  object-fit: contain;
+}

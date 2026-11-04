@@ -7,6 +7,15 @@
 3. **Commits** — [Conventional Commits](https://www.conventionalcommits.org/fr/) : `feat(ui): grille du guide`, `fix(core): …`, `chore: …`.
 4. **PR** — vers `main`, remplir le modèle, écrire `Closes #N`. La CI doit être verte.
 5. **Merge** — *squash merge* ; la branche est supprimée automatiquement.
+6. **Build Windows validé** — après validation du build et fusion de sa PR, déplacer ce build
+   exact vers `apps/desktop/release/latest/`, puis supprimer les anciens builds et installateurs
+   remplacés. `latest` contient uniquement la dernière version validée et fusionnée, jamais
+   un candidat en cours de test. Ne pas reconstruire pendant la promotion : conserver les
+   binaires testés. Le chemin de lancement direct reste `release/latest/win-unpacked/Zapp.exe`.
+   Une fonctionnalité validée et fusionnée n’est pas livrée tant que le setup de `latest`
+   ne l’embarque pas. Si la validation a porté sur `desktop start`, générer le setup depuis
+   le commit fusionné dans une copie isolée, vérifier les fichiers embarqués, puis promouvoir
+   ce build sans le reconstruire. Fournir le lien vers l’installateur à la fin de la livraison.
 
 `main` est protégée : pas de push direct, PR + CI obligatoires.
 

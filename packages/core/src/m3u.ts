@@ -106,6 +106,7 @@ export function m3uChannels(entries: M3uEntry[], options: M3uOptions = {}): Chan
         rawNumber: e.attrs['tvg-chno'],
         name: e.name || e.attrs['tvg-name'] || e.url,
         category: categorize(e.attrs['group-title'] ?? '', keywords),
+        group: e.attrs['group-title'],
         logo: e.attrs['tvg-logo'] || undefined,
         image: e.attrs['tvg-logo'] || undefined,
         streamUrl: e.url,

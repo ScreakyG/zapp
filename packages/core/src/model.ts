@@ -23,6 +23,8 @@ export interface Channel {
   number: string;
   name: string;
   category: Category;
+  /** Original provider group, used to disambiguate regional presets. */
+  group?: string;
   image?: string;
   logo?: string;
   /** Empty when the source has no stream (demo channels). */

@@ -131,6 +131,7 @@ describe('startZapping', () => {
     homeRows: [[0, 1]],
     guidePrograms: () => [],
     guideWindowStart: 0,
+    apps: [],
     tvFilterCount: 1,
     tvChannels: () => [0, 1],
   };

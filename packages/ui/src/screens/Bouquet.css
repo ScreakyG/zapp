@@ -1,0 +1,46 @@
+.bouquet {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* In place of the TabBar; no flex gap (Chromium 79). */
+.bouquet-header {
+  position: absolute;
+  top: var(--space-lg);
+  left: var(--space-safe);
+  right: var(--space-safe);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.bouquet-header > * + * {
+  margin-left: 20px;
+}
+
+.bouquet-back {
+  padding: 9px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--glass);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition:
+    background var(--focus-duration) var(--focus-easing),
+    color var(--focus-duration) var(--focus-easing),
+    transform var(--focus-duration) var(--focus-easing);
+}
+
+.bouquet-back.focused {
+  background: var(--accent);
+  color: var(--on-accent);
+  transform: scale(1.08);
+  box-shadow: var(--shadow-pill);
+}
+
+.bouquet-clock {
+  margin-left: auto;
+}

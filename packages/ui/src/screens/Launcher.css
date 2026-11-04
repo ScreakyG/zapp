@@ -1,0 +1,106 @@
+.launcher {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 30% 20%, var(--surface-raised) 0%, var(--bg) 70%);
+}
+
+.launcher-title {
+  position: absolute;
+  top: 196px;
+  left: var(--space-safe);
+  margin: 0;
+  color: var(--ink-muted);
+  transition: color var(--focus-duration) var(--focus-easing);
+}
+
+.launcher-title.active {
+  color: var(--ink);
+}
+
+.launcher-row {
+  position: absolute;
+  top: 244px;
+  left: var(--space-safe);
+  transition: transform var(--focus-duration) var(--focus-easing);
+}
+
+.launcher-card {
+  position: absolute;
+  top: 0;
+  width: 336px;
+}
+
+.launcher-card-lift {
+  position: relative;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-rest);
+  transition: transform var(--focus-duration) var(--focus-easing);
+}
+
+.launcher-card.focused .launcher-card-lift {
+  transform: translateY(var(--focus-lift)) scale(var(--focus-scale));
+  box-shadow: var(--shadow-lift);
+}
+
+.launcher-card-media {
+  position: relative;
+  width: 336px;
+  height: 189px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.launcher-card-logo {
+  max-width: 200px;
+  max-height: 110px;
+  object-fit: contain;
+}
+
+.launcher-card-sheen,
+.launcher-card-edge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.launcher-card-sheen {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 42%);
+  opacity: 0;
+  transition: opacity var(--focus-duration) var(--focus-easing);
+}
+
+.launcher-card.focused .launcher-card-sheen {
+  opacity: 1;
+}
+
+.launcher-card-edge {
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.launcher-card-caption {
+  margin-top: 12px;
+  transition: transform var(--focus-duration) var(--focus-easing);
+}
+
+.launcher-card.focused .launcher-card-caption {
+  transform: translateY(10px);
+}
+
+.launcher-card-label {
+  color: var(--ink-muted);
+}
+
+.launcher-card.focused .launcher-card-label {
+  color: var(--ink);
+}

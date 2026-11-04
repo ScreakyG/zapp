@@ -77,6 +77,16 @@ export const CATEGORY_FILTERS: TvFilter[] = [
 export const TV_LIST_ROWS = 8;
 export const TV_LIST_LEAD = 3;
 
+/** An app of the home launcher: a paid bouquet of the France preset and its channels. */
+export interface AppView {
+  id: string;
+  label: string;
+  /** Indices into the channel list. */
+  channels: number[];
+  /** The bouquet's logo: the provider logo of its first channel that has one. */
+  logo?: string;
+}
+
 export interface HomeRowView {
   title: string;
   channels: number[];
@@ -205,6 +215,7 @@ export function createApp(options: AppOptions = {}) {
     searchable(searchQuery()).trim().split(/\s+/).filter(Boolean),
   );
   const [homeRows, setHomeRows] = createSignal<HomeRowView[]>([]);
+  const [apps, setApps] = createSignal<AppView[]>([]);
   const [now, setNow] = createSignal(Date.now());
   const [banner, setBanner] = createSignal(false);
   const [zap, setZap] = createSignal<ZapView>({ typed: '', error: false });
@@ -247,6 +258,7 @@ export function createApp(options: AppOptions = {}) {
     now: now(),
     channelCount: channels().length,
     homeRows: homeRows().map((r) => r.channels),
+    apps: apps().map((a) => a.channels),
     guidePrograms: (row: number) => guideSpans()[row] ?? [],
     guideWindowStart: guideStart(),
     tvFilterCount: tvFilters().length,
@@ -425,6 +437,21 @@ export function createApp(options: AppOptions = {}) {
       : source.homeRows?.();
     batch(() => {
       setTvFilters(lineup ? GROUP_FILTERS : CATEGORY_FILTERS);
+      // The TNT is no app: its channels are in the TV tab.
+      setApps(
+        (bouquets ?? [])
+          .filter((b) => b.id !== 'tnt')
+          .map((b) => {
+            // In number order, like the lineup.
+            const channels = b.channels.flatMap((id) => index.get(id) ?? []).sort((x, y) => x - y);
+            return {
+              id: b.id,
+              label: b.label,
+              channels,
+              logo: channels.map((i) => list[i]!.logo).find(Boolean),
+            };
+          }),
+      );
       setPrograms(new Map());
       setChannels(list);
       showRows(curated ?? buildHomeRows(list, () => false, favourites));
@@ -674,6 +701,7 @@ export function createApp(options: AppOptions = {}) {
     loadError,
     channels,
     homeRows,
+    apps,
     programs,
     onAir,
     guideStart,

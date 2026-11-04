@@ -12,7 +12,7 @@ import {
   CATEGORIES,
   DemoSource,
   buildHomeRows,
-  buildFrenchBouquets,
+  frenchLineup,
   type HomeRowSpec,
   type Source,
   NumberZapper,
@@ -364,10 +364,10 @@ export function createApp(options: AppOptions = {}) {
   const load = async (mine: number, next: AppSource, config: Settings): Promise<boolean> => {
     const catalogue = await next.getChannels();
     if (mine !== generation) return false;
-    const bouquets = config.channelPreset === 'france' ? buildFrenchBouquets(catalogue) : undefined;
-    const selected = bouquets && new Set(bouquets.flatMap((b) => b.channels));
-    const list = selected ? catalogue.filter((c) => selected.has(c.id)) : catalogue;
-    if (selected && list.length === 0) {
+    const lineup = config.channelPreset === 'france' ? frenchLineup(catalogue) : undefined;
+    const bouquets = lineup?.bouquets;
+    const list = lineup ? lineup.channels : catalogue;
+    if (lineup && list.length === 0) {
       throw new Error(
         'Aucune chaîne reconnue pour le preset France. Choisissez Toutes les chaînes pour consulter votre catalogue.',
       );

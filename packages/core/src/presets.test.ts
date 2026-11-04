@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFrenchBouquets, frenchBouquet } from './presets';
+import { buildFrenchBouquets, frenchBouquet, frenchLineup } from './presets';
 import type { Channel } from './model';
 
 const channel = (name: string, group?: string): Channel => ({
@@ -293,5 +293,67 @@ describe('France preset', () => {
       },
     ]);
     expect(list[0]?.streamUrl).toBe('stream');
+  });
+});
+
+describe('France lineup', () => {
+  const ch = (name: string, number: number, group?: string): Channel => ({
+    id: `xtream:${number}`,
+    name,
+    group,
+    number: String(number),
+    category: 'divert',
+    streamUrl: `stream:${number}`,
+    epgId: `epg:${number}`,
+  });
+  const catalogue = [
+    ch('VIP: beIN Sports 2 RAW', 18246),
+    ch('VIP: beIN Sports 1 RAW', 18245),
+    ch('FR: DAZN 1 ᴿᴬᵂ', 19472, 'FR| DAZN LA LIGA PPV'),
+    ch('VIP: France 2 ᴿᴬᵂ', 2, 'FR| FRANCE ⱽᴵᴾ ᴿᴬᵂ'),
+    ch('FR TF1 FHD', 17990),
+    ch('FR: CANAL+ RAW', 30),
+    ch('FR: CANAL+ CINEMA RAW', 31),
+    ch('FR: CANAL+ SPORT 360 RAW', 32),
+    ch('FR Ligue 1+ 2 RAW', 18308),
+    ch('RMC Story RAW', 20000),
+    ch('VIP: RMCSPORT 1 ᴿᴬᵂ 50 FPS', 18337),
+    ch('FR BFM TV HD', 40),
+    ch('FR T18 RAW', 41),
+  ];
+  const lineup = frenchLineup(catalogue);
+  const shown = lineup.channels.map((c) => [c.number, c.name, c.bouquet, c.groups]);
+
+  it('renames channels, gives them French numbers and sorts by number', () => {
+    expect(shown).toEqual([
+      ['001', 'TF1', undefined, ['tnt']],
+      ['002', 'France 2', undefined, ['tnt']],
+      ['004', 'Canal+', 'canal', ['sport', 'cinema']],
+      ['015', 'BFMTV', undefined, ['tnt', 'info']],
+      ['023', 'RMC Story', 'rmc', ['docs']],
+      ['030', 'T18', undefined, ['tnt']],
+      ['040', 'Canal+ Cinéma', 'canal', ['cinema']],
+      ['041', 'Canal+ Sport 360', 'canal', ['sport']],
+      ['101', 'Ligue 1+ 2', 'ligue1', ['sport']],
+      ['110', 'beIN Sports 2', 'bein', ['sport']],
+      ['111', 'beIN Sports 1', 'bein', ['sport']],
+      ['120', 'DAZN 1', 'dazn', ['sport']],
+      ['130', 'RMC Sport 1', 'rmc-sport', ['sport']],
+    ]);
+  });
+
+  it('keeps ids, streams and EPG ids, so favourites and the guide still match', () => {
+    const tf1 = lineup.channels.find((c) => c.name === 'TF1')!;
+    expect(tf1).toMatchObject({
+      id: 'xtream:17990',
+      streamUrl: 'stream:17990',
+      epgId: 'epg:17990',
+    });
+    expect(lineup.bouquets.map((b) => b.id)).toContain('tnt');
+  });
+
+  it('never gives two channels the same number', () => {
+    const twice = frenchLineup([ch('FR: CANAL+ RAW', 30), ch('FR: CANAL+ ᴴᴰ', 33)]);
+    expect(twice.channels.map((c) => c.number)).toEqual(['004', '040']);
   });
 });

@@ -190,3 +190,180 @@ export function buildFrenchBouquets(channels: readonly Channel[]) {
     channels: members.get(b.id)!.map((channel) => channel.id),
   })).filter((b) => b.channels.length > 0);
 }
+
+/** Themed groups of the TV tab. "Mes chaînes" is the favourites list, not a group. */
+export const CHANNEL_GROUPS = [
+  { id: 'tnt', label: 'TNT' },
+  { id: 'sport', label: 'Sport' },
+  { id: 'cinema', label: 'Cinéma et séries' },
+  { id: 'info', label: 'Info' },
+  { id: 'docs', label: 'Découverte' },
+] as const;
+
+export type ChannelGroup = (typeof CHANNEL_GROUPS)[number]['id'];
+
+interface Station {
+  name: string;
+  /** French logical channel number; stations without one are numbered after the others. */
+  number?: number;
+  groups: ChannelGroup[];
+}
+
+/** Keyed by tntStation(). */
+const TNT_STATIONS: Record<string, Station> = {
+  tf1: { name: 'TF1', number: 1, groups: [] },
+  france2: { name: 'France 2', number: 2, groups: [] },
+  france3: { name: 'France 3', number: 3, groups: [] },
+  france4: { name: 'France 4', number: 14, groups: [] },
+  france5: { name: 'France 5', number: 5, groups: ['docs'] },
+  m6: { name: 'M6', number: 6, groups: [] },
+  arte: { name: 'Arte', number: 7, groups: ['docs'] },
+  lcp: { name: 'LCP', number: 8, groups: ['info'] },
+  w9: { name: 'W9', number: 9, groups: [] },
+  tmc: { name: 'TMC', number: 10, groups: ['cinema'] },
+  tfx: { name: 'TFX', number: 11, groups: ['cinema'] },
+  bfmtv: { name: 'BFMTV', number: 15, groups: ['info'] },
+  cnews: { name: 'CNews', number: 16, groups: ['info'] },
+  cstar: { name: 'CStar', number: 17, groups: [] },
+  gulli: { name: 'Gulli', number: 18, groups: [] },
+  novo19: { name: 'Novo19', number: 19, groups: [] },
+  tf1seriesfilms: { name: 'TF1 Séries Films', number: 20, groups: ['cinema'] },
+  lequipe: { name: 'L’Équipe', number: 21, groups: ['sport'] },
+  '6ter': { name: '6ter', number: 22, groups: [] },
+  cherie25: { name: 'Chérie 25', number: 25, groups: [] },
+  lci: { name: 'LCI', number: 26, groups: ['info'] },
+  franceinfo: { name: 'franceinfo', number: 27, groups: ['info'] },
+  // LCP and Public Sénat share 8: Public Sénat goes after the TNT so numbers stay unique.
+  publicsenat: { name: 'Public Sénat', groups: ['info'] },
+  t18: { name: 'T18', groups: [] },
+  novelas: { name: 'Novelas TV', groups: ['cinema'] },
+  cmitv: { name: 'CMI TV', groups: [] },
+};
+
+/** First number of each bouquet; its channels follow in catalogue order. */
+const BOUQUET_BASE: Record<Exclude<FrenchBouquet, 'tnt'>, number> = {
+  canal: 40,
+  ligue1: 101,
+  bein: 110,
+  dazn: 120,
+  'rmc-sport': 130,
+  rmc: 140,
+};
+/** TNT channels without an official number come after the official ones. */
+const TNT_EXTRA_BASE = 30;
+
+/** Provider prefixes and quality tags removed, for reading the station out of a name. */
+function cleanName(channel: Channel): string {
+  return presetText(channel.name)
+    .replace(/^(?:[a-z]{2,4}\s*[:|]\s*)+/, '')
+    .replace(/\+/g, ' plus ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b\d+\s*fps\b/g, ' ')
+    .replace(/\b(?:fr|be|vip|gold|raw|sd|hd|fhd|uhd|4k|8k|h264|backup|50|60)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** "Label 2" when the cleaned name ends with a channel index, else "Label". */
+const indexed = (label: string, text: string) => {
+  const n = text.match(/\b(\d{1,2})$/)?.[1];
+  return n ? `${label} ${Number(n)}` : label;
+};
+
+const CANAL: [RegExp, string, ChannelGroup[]][] = [
+  [/\bsport\s*360\b/, 'Canal+ Sport 360', ['sport']],
+  [/\bsport\b/, 'Canal+ Sport', ['sport']],
+  [/\bfoot\b/, 'Canal+ Foot', ['sport']],
+  [/\blive\b/, 'Canal+ Live', ['sport']],
+  [/\bpremier\b/, 'Canal+ Premier League', ['sport']],
+  [/\bcinema\b/, 'Canal+ Cinéma', ['cinema']],
+  [/\bseries\b/, 'Canal+ Séries', ['cinema']],
+  [/\bgrand\b/, 'Canal+ Grand Écran', ['cinema']],
+  [/\baction\b/, 'Canal+ Action', ['cinema']],
+  [/\bbox\b/, 'Canal+ Box Office', ['cinema']],
+  [/\bdecale\b/, 'Canal+ Décalé', ['cinema']],
+  [/\bdocs\b/, 'Canal+ Docs', ['docs']],
+  [/\bkids\b/, 'Canal+ Kids', []],
+];
+
+/** Display name, groups and, when it has one, the French number of a preset channel. */
+function present(channel: Channel, bouquet: FrenchBouquet): Station {
+  const text = cleanName(channel);
+  switch (bouquet) {
+    case 'tnt': {
+      const station = TNT_STATIONS[tntStation(channel)];
+      return station
+        ? { ...station, groups: ['tnt', ...station.groups] }
+        : { name: channel.name, groups: ['tnt'] };
+    }
+    case 'canal': {
+      const hit = CANAL.find(([pattern]) => pattern.test(text));
+      if (!hit) return { name: 'Canal+', number: 4, groups: ['sport', 'cinema'] };
+      return { name: indexed(hit[1], text), groups: hit[2] };
+    }
+    case 'ligue1':
+      return { name: indexed('Ligue 1+', text.replace(/\bligue\s*1\b/, '')), groups: ['sport'] };
+    case 'bein':
+      return {
+        name: indexed(/\bmax\b/.test(text) ? 'beIN Sports MAX' : 'beIN Sports', text),
+        groups: ['sport'],
+      };
+    case 'dazn':
+      return { name: indexed('DAZN', text), groups: ['sport'] };
+    case 'rmc-sport': {
+      const station = rmcStation(channel);
+      const live = station.match(/\blive (\d+)/)?.[1];
+      if (live) return { name: `RMC Sport Live ${Number(live)}`, groups: ['sport'] };
+      if (/\baccess\b/.test(station))
+        return { name: indexed('RMC Sport Access', station), groups: ['sport'] };
+      return { name: indexed('RMC Sport', station), groups: ['sport'] };
+    }
+    case 'rmc': {
+      const station = rmcStation(channel);
+      if (/\bstory\b/.test(station)) return { name: 'RMC Story', number: 23, groups: ['docs'] };
+      if (/\bdecouverte\b/.test(station))
+        return { name: 'RMC Découverte', number: 24, groups: ['docs'] };
+      if (/\blife\b/.test(station)) return { name: 'RMC Life', groups: ['docs'] };
+      return { name: channel.name, groups: ['docs'] };
+    }
+  }
+}
+
+const pad = (n: number) => String(n).padStart(3, '0');
+
+/**
+ * The France preset as shown in Zapp: the channels of buildFrenchBouquets renamed ("TF1", not
+ * "VIP: TF1 ᴿᴬᵂ"), renumbered with French numbers (TNT 1–27, then one range per bouquet) and
+ * sorted by number. Ids, streams and EPG ids stay intact; each channel gains its bouquet (none
+ * for the TNT) and its groups.
+ */
+export function frenchLineup(channels: readonly Channel[]) {
+  const bouquets = buildFrenchBouquets(channels);
+  const byId = new Map(channels.map((c) => [c.id, c]));
+  const taken = new Set<number>();
+  const entries: { channel: Channel; bouquet: FrenchBouquet; station: Station }[] = [];
+  for (const b of bouquets) {
+    for (const id of b.channels) {
+      const station = present(byId.get(id)!, b.id);
+      // Two stations claiming the same official number: the first one keeps it.
+      if (station.number !== undefined && taken.has(station.number)) delete station.number;
+      if (station.number !== undefined) taken.add(station.number);
+      entries.push({ channel: byId.get(id)!, bouquet: b.id, station });
+    }
+  }
+  const free = (from: number) => {
+    let n = from;
+    while (taken.has(n)) n++;
+    taken.add(n);
+    return n;
+  };
+  const lineup: Channel[] = entries.map(({ channel, bouquet, station }) => ({
+    ...channel,
+    name: station.name,
+    number: pad(station.number ?? free(bouquet === 'tnt' ? TNT_EXTRA_BASE : BOUQUET_BASE[bouquet])),
+    ...(bouquet === 'tnt' ? {} : { bouquet }),
+    groups: station.groups,
+  }));
+  lineup.sort((a, b) => Number(a.number) - Number(b.number));
+  return { channels: lineup, bouquets };
+}

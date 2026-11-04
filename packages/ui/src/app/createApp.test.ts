@@ -80,7 +80,9 @@ describe('createApp', () => {
     const { app, dispose } = start({ channelPreset: 'france' }, [source]);
     try {
       await flush();
-      expect(app.channels()).toEqual([raw]);
+      expect(app.channels().map((c) => [c.id, c.name, c.number])).toEqual([
+        [raw.id, 'DAZN 1', '120'],
+      ]);
       expect(app.homeRows()).toEqual([{ title: 'DAZN', channels: [0] }]);
       expect(app.guideRows()).toHaveLength(1);
       expect(app.mosaicFilters().map((f) => f.id)).toEqual([null, 'dazn']);
@@ -105,15 +107,19 @@ describe('createApp', () => {
     const { app, dispose } = start({ channelPreset: 'france' }, [source]);
     try {
       await flush();
-      expect(app.channels()).toEqual([sport, story]);
+      // Renamed and renumbered: RMC Story (023) now comes before RMC Sport 1 (130).
+      expect(app.channels().map((c) => [c.id, c.name])).toEqual([
+        [story.id, 'RMC Story'],
+        [sport.id, 'RMC Sport 1'],
+      ]);
       expect(app.guideRows()).toHaveLength(2);
       expect(app.homeRows()).toEqual([
-        { title: 'RMC Sport', channels: [0] },
-        { title: 'RMC', channels: [1] },
+        { title: 'RMC Sport', channels: [1] },
+        { title: 'RMC', channels: [0] },
       ]);
       expect(app.mosaicFilters().map((f) => f.id)).toEqual([null, 'rmc-sport', 'rmc']);
-      expect(app.mosaicChannels(1)).toEqual([0]);
-      expect(app.mosaicChannels(2)).toEqual([1]);
+      expect(app.mosaicChannels(1)).toEqual([1]);
+      expect(app.mosaicChannels(2)).toEqual([0]);
     } finally {
       dispose();
     }
@@ -166,7 +172,14 @@ describe('createApp', () => {
       ).toBe(true);
       await app.programsLoaded();
       expect(app.settings().channelPreset).toBeUndefined(); // candidate is not saved yet
-      expect(app.channels()).toEqual(list.slice(0, 5));
+      expect(app.channels().map((c) => c.id)).toEqual(list.slice(0, 5).map((c) => c.id));
+      expect(app.channels().map((c) => c.name)).toEqual([
+        'TF1',
+        'Canal+ Sport',
+        'Ligue 1+ 1',
+        'beIN Sports 1',
+        'RMC Sport 1',
+      ]);
       expect(app.guideRows()).toHaveLength(5);
       expect(app.homeRows().map((r) => r.title)).toEqual([
         'Chaînes favorites',

@@ -112,7 +112,9 @@ function changed(a: NavState, b: NavState): boolean {
     a.guide.row !== b.guide.row ||
     a.guide.prog !== b.guide.prog ||
     a.tv.filter !== b.tv.filter ||
-    a.tv.idx !== b.tv.idx
+    a.tv.idx !== b.tv.idx ||
+    a.app.app !== b.app.app ||
+    a.app.idx !== b.app.idx
   );
 }
 
@@ -121,11 +123,13 @@ function scrolls(a: NavState, b: NavState): boolean {
   const homeCol = (s: NavState) => Math.max(0, (s.home.cols[s.home.row] ?? 0) - 2);
   const guideOffset = (s: NavState) => Math.max(0, s.guide.row - 3);
   const tvOffset = (s: NavState) => Math.max(0, s.tv.idx - TV_LIST_LEAD);
+  const appOffset = (s: NavState) => Math.max(0, s.app.idx - TV_LIST_LEAD);
   return (
     a.home.row !== b.home.row ||
     homeCol(a) !== homeCol(b) ||
     guideOffset(a) !== guideOffset(b) ||
-    tvOffset(a) !== tvOffset(b)
+    tvOffset(a) !== tvOffset(b) ||
+    appOffset(a) !== appOffset(b)
   );
 }
 

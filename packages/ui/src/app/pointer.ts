@@ -14,7 +14,7 @@ export interface PointerHandlers {
 export function pointerTo(
   app: App,
   target: (state: NavState) => NavState,
-  /** What a click selects, when it differs from hovering (mosaic filters). */
+  /** What a click selects, when it differs from hovering (TV filters). */
   clickTarget: (state: NavState) => NavState = target,
 ): PointerHandlers {
   if (!app.pointer) return {};

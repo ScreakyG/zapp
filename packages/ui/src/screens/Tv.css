@@ -1,4 +1,4 @@
-.mosaic {
+.tv {
   position: absolute;
   top: 0;
   right: 0;
@@ -6,15 +6,31 @@
   left: 0;
 }
 
-.mosaic-chips {
+/* Above the list's backdrop, which ChannelList paints first. */
+.tv-search,
+.tv-chips {
   position: absolute;
-  top: 172px;
   left: var(--space-safe);
+  z-index: 1;
+}
+
+.tv-search {
+  top: 96px;
+  max-width: calc(100% - 2 * var(--space-safe));
+  border: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.tv-chips {
+  top: 144px;
   right: var(--space-safe);
   display: flex;
 }
 
-.mosaic-chips > * + * {
+.tv-chips > * + * {
   margin-left: 10px;
 }
 
@@ -43,45 +59,15 @@
   box-shadow: var(--shadow-pill);
 }
 
+.chip-star {
+  width: 16px;
+  height: 16px;
+  margin-right: var(--space-xs);
+  fill: currentColor;
+}
+
 .chip-count {
   margin-left: var(--space-xs);
   font-weight: 600;
   opacity: 0.75;
-}
-
-.mosaic-grid {
-  position: absolute;
-  top: 228px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow: hidden;
-}
-
-.mosaic-track {
-  position: relative;
-  top: var(--space-sm);
-  left: var(--space-safe);
-  transition: transform var(--focus-duration) var(--focus-easing);
-}
-
-.mosaic-cell {
-  position: absolute;
-}
-
-.mosaic-search {
-  position: absolute;
-  top: 112px;
-  left: var(--space-safe);
-  max-width: calc(100% - 2 * var(--space-safe));
-  border: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  display: block;
-}
-
-.mosaic-empty {
-  margin: var(--space-sm) var(--space-safe);
-  color: var(--ink-muted);
 }

@@ -6,11 +6,11 @@ import type { Action } from './keys';
  * performs the returned effects (open the player, show the zap banner).
  */
 
-export type Screen = 'home' | 'guide' | 'mosaic' | 'player' | 'settings';
+export type Screen = 'home' | 'tv' | 'guide' | 'player' | 'settings';
 export type Zone = 'menu' | 'search' | 'chips' | 'content';
 
 /** TabBar entries, left to right. The gear sits after the tabs, top right. */
-export const MENU = ['home', 'guide', 'mosaic', 'settings'] as const;
+export const MENU = ['home', 'tv', 'guide', 'settings'] as const;
 
 export interface NavState {
   screen: Screen;
@@ -25,9 +25,13 @@ export interface NavState {
   home: { row: number; cols: number[] };
   /** Focused channel row and program; `time` is the targeted instant kept across ↑↓ (ms). */
   guide: { row: number; prog: number; time: number };
-  mosaic: { filter: number; idx: number };
-  /** Index in the channel list. */
-  player: { channel: number };
+  /** TV tab: the selected filter (applied as focus moves) and the focused list position. */
+  tv: { filter: number; idx: number };
+  /**
+   * Index in the channel list, and the list it was opened from (a TV filter, a home row):
+   * ↑ ↓ zap within it. null: the whole channel list.
+   */
+  player: { channel: number; list: number[] | null };
 }
 
 export interface Span {
@@ -46,9 +50,8 @@ export interface NavContext {
   /** Programs of a guide row, clipped to the visible window, sorted. Guide row i = channel i. */
   guidePrograms(row: number): Span[];
   guideWindowStart: number;
-  mosaicFilterCount: number;
-  mosaicColumns: number;
-  mosaicChannels(filter: number): number[];
+  tvFilterCount: number;
+  tvChannels(filter: number): number[];
 }
 
 /** `tune`: play `channel` (opening the player, or zapping inside it). */
@@ -68,8 +71,9 @@ export function initialNav(ctx: NavContext): NavState {
     menuIdx: 0,
     home: { row: 0, cols: ctx.homeRows.map(() => 0) },
     guide: { row: 0, prog: programIndexAt(ctx.guidePrograms(0), ctx.now), time: ctx.now },
-    mosaic: { filter: 0, idx: 0 },
-    player: { channel: 0 },
+    // Open TV on the first filter that has channels ("Mes chaînes" may be empty).
+    tv: { filter: firstFilled(ctx), idx: 0 },
+    player: { channel: 0, list: null },
   };
 }
 
@@ -84,8 +88,9 @@ export function normalize(state: NavState, ctx: NavContext): NavState {
   const cols = rows.map((r, i) => clamp(state.home.cols[i] ?? 0, 0, Math.max(0, r.length - 1)));
   const guideRow = clamp(state.guide.row, 0, Math.max(0, ctx.channelCount - 1));
   const programs = ctx.guidePrograms(guideRow);
-  const filter = clamp(state.mosaic.filter, 0, Math.max(0, ctx.mosaicFilterCount - 1));
-  const tiles = ctx.mosaicChannels(filter).length;
+  const filter = clamp(state.tv.filter, 0, Math.max(0, ctx.tvFilterCount - 1));
+  const items = ctx.tvChannels(filter).length;
+  const playerList = state.player.list?.filter((i) => i < ctx.channelCount) ?? null;
   const next: NavState = {
     ...state,
     home: { row: homeRow, cols },
@@ -94,11 +99,14 @@ export function normalize(state: NavState, ctx: NavContext): NavState {
       prog: clamp(state.guide.prog, 0, Math.max(0, programs.length - 1)),
       time: state.guide.time,
     },
-    mosaic: { filter, idx: clamp(state.mosaic.idx, 0, Math.max(0, tiles - 1)) },
-    player: { channel: clamp(state.player.channel, 0, Math.max(0, ctx.channelCount - 1)) },
+    tv: { filter, idx: clamp(state.tv.idx, 0, Math.max(0, items - 1)) },
+    player: {
+      channel: clamp(state.player.channel, 0, Math.max(0, ctx.channelCount - 1)),
+      list: playerList?.length ? playerList : null,
+    },
   };
-  // Nothing to focus in an emptied mosaic grid: fall back to the chips.
-  if (next.screen === 'mosaic' && next.zone === 'content' && tiles === 0) next.zone = 'chips';
+  // Nothing to focus in an emptied list: fall back to the chips.
+  if (next.screen === 'tv' && next.zone === 'content' && items === 0) next.zone = 'chips';
   return next;
 }
 
@@ -113,8 +121,8 @@ export function navigate(current: NavState, action: Nav, ctx: NavContext): NavRe
       return home(state, action, ctx);
     case 'guide':
       return guide(state, action, ctx);
-    case 'mosaic':
-      return mosaic(state, action, ctx);
+    case 'tv':
+      return tv(state, action, ctx);
     case 'settings':
       return action === 'back'
         ? done({ ...state, screen: state.settingsReturn, zone: 'content' })
@@ -122,11 +130,17 @@ export function navigate(current: NavState, action: Nav, ctx: NavContext): NavRe
   }
 }
 
-/** Opens the player on `channel` from the current screen (also used by number zapping). */
-export function openPlayer(state: NavState, channel: number): NavResult {
+/**
+ * Opens the player on `channel` from the current screen; ↑ ↓ then zap within `list` ([]: the
+ * whole channel list). Without a list (number zapping), the current zap list is kept if it holds
+ * the channel.
+ */
+export function openPlayer(state: NavState, channel: number, list?: number[]): NavResult {
   const from = state.screen === 'player' ? state.prevScreen : state.screen;
+  const kept = state.player.list?.includes(channel) ? state.player.list : null;
+  const zapList = list ? (list.includes(channel) ? list : null) : kept;
   return {
-    state: { ...state, screen: 'player', prevScreen: from, player: { channel } },
+    state: { ...state, screen: 'player', prevScreen: from, player: { channel, list: zapList } },
     effects: [{ type: 'tune', channel }, { type: 'showBanner' }],
   };
 }
@@ -144,9 +158,15 @@ export function startZapping(state: NavState): NavResult {
 
 function player(state: NavState, action: Nav, ctx: NavContext): NavResult {
   if ((action === 'up' || action === 'down') && ctx.channelCount > 0) {
-    const channel = wrap(state.player.channel + (action === 'up' ? 1 : -1), ctx.channelCount);
+    const list = state.player.list;
+    const at = list ? list.indexOf(state.player.channel) : -1;
+    const step = action === 'up' ? 1 : -1;
+    const channel =
+      list && at >= 0
+        ? list[wrap(at + step, list.length)]!
+        : wrap(state.player.channel + step, ctx.channelCount);
     return {
-      state: { ...state, player: { channel } },
+      state: { ...state, player: { channel, list: at >= 0 ? list : null } },
       effects: [{ type: 'tune', channel }, { type: 'showBanner' }],
     };
   }
@@ -156,6 +176,11 @@ function player(state: NavState, action: Nav, ctx: NavContext): NavResult {
       // Back from the guide's player: land on the watched channel, on the program airing now.
       const row = state.player.channel;
       next.guide = { row, prog: programIndexAt(ctx.guidePrograms(row), ctx.now), time: ctx.now };
+    }
+    if (state.prevScreen === 'tv') {
+      // Back on the list it was opened from, on the channel watched (zapping may have moved it).
+      const idx = ctx.tvChannels(state.tv.filter).indexOf(state.player.channel);
+      if (idx >= 0) next.tv = { ...state.tv, idx };
     }
     return done(next);
   }
@@ -168,6 +193,12 @@ function player(state: NavState, action: Nav, ctx: NavContext): NavResult {
  */
 function enterGuide(state: NavState, ctx: NavContext): NavState {
   return state.screen === 'guide' ? reanchorGuide(state, ctx) : state;
+}
+
+/** Opening TV on a filter left empty (Mes chaînes, channels not loaded yet) picks a filled one. */
+function enterTv(state: NavState, ctx: NavContext): NavState {
+  if (state.screen !== 'tv' || ctx.tvChannels(state.tv.filter).length > 0) return state;
+  return { ...state, tv: { filter: firstFilled(ctx), idx: 0 } };
 }
 
 /**
@@ -187,9 +218,9 @@ function menu(state: NavState, action: Nav, ctx: NavContext): NavResult {
     case 'right':
       return done({ ...state, menuIdx: Math.min(MENU.length - 1, state.menuIdx + 1) });
     case 'down':
-      return done({ ...state, zone: state.screen === 'mosaic' ? 'search' : 'content' });
+      return done({ ...state, zone: state.screen === 'tv' ? 'search' : 'content' });
     case 'ok':
-      return done(enterGuide(goTo(state, MENU[state.menuIdx]!), ctx));
+      return done(enterTv(enterGuide(goTo(state, MENU[state.menuIdx]!), ctx), ctx));
     case 'back':
       return state.screen === 'home' ? done(state) : done(goTo(state, 'home'));
     default:
@@ -218,7 +249,7 @@ function home(state: NavState, action: Nav, ctx: NavContext): NavResult {
       });
     case 'ok': {
       const channel = ctx.homeRows[row]?.[col];
-      return channel === undefined ? done(state) : openPlayer(state, channel);
+      return channel === undefined ? done(state) : openPlayer(state, channel, ctx.homeRows[row]);
     }
     default:
       return done(state);
@@ -246,16 +277,21 @@ function guide(state: NavState, action: Nav, ctx: NavContext): NavResult {
       return done({ ...state, guide: { row: next, prog: p, time: state.guide.time } });
     }
     case 'ok':
-      return openPlayer(state, row);
+      return openPlayer(state, row, []);
     case 'back':
       return done(goTo(state, 'home'));
   }
 }
 
-function mosaic(state: NavState, action: Nav, ctx: NavContext): NavResult {
-  const { filter } = state.mosaic;
+function tv(state: NavState, action: Nav, ctx: NavContext): NavResult {
+  const { filter } = state.tv;
+  /** Filters apply as focus moves, without OK, and restart the list at its top. */
+  const pick = (f: number): NavState => {
+    const next = clamp(f, 0, Math.max(0, ctx.tvFilterCount - 1));
+    return { ...state, tv: { filter: next, idx: next === filter ? state.tv.idx : 0 } };
+  };
   if (state.zone === 'search') {
-    if (action === 'up') return done(toMenu(state, 'mosaic'));
+    if (action === 'up') return done(toMenu(state, 'tv'));
     if (action === 'down') return done({ ...state, zone: 'chips' });
     if (action === 'back') return done(goTo(state, 'home'));
     return done(state);
@@ -263,16 +299,13 @@ function mosaic(state: NavState, action: Nav, ctx: NavContext): NavResult {
   if (state.zone === 'chips') {
     switch (action) {
       case 'left':
-      case 'right': {
-        // Filters apply as focus moves, without OK, and reset the grid to its first tile.
-        const f = clamp(filter + (action === 'left' ? -1 : 1), 0, ctx.mosaicFilterCount - 1);
-        return done({ ...state, mosaic: { filter: f, idx: 0 } });
-      }
+      case 'right':
+        return done(pick(filter + (action === 'left' ? -1 : 1)));
       case 'up':
         return done({ ...state, zone: 'search' });
       case 'down':
       case 'ok':
-        return ctx.mosaicChannels(filter).length > 0
+        return ctx.tvChannels(filter).length > 0
           ? done({ ...state, zone: 'content' })
           : done(state);
       case 'back':
@@ -280,30 +313,34 @@ function mosaic(state: NavState, action: Nav, ctx: NavContext): NavResult {
     }
   }
 
-  const list = ctx.mosaicChannels(filter);
-  const cols = ctx.mosaicColumns;
-  const idx = Math.min(state.mosaic.idx, list.length - 1);
-  const at = (i: number) => done({ ...state, mosaic: { filter, idx: i } });
+  const list = ctx.tvChannels(filter);
+  const idx = Math.min(state.tv.idx, list.length - 1);
+  const at = (i: number) => done({ ...state, tv: { filter, idx: i } });
   switch (action) {
-    case 'left':
-      return idx % cols > 0 ? at(idx - 1) : done(state);
-    case 'right':
-      return idx % cols < cols - 1 && idx + 1 < list.length ? at(idx + 1) : done(state);
     case 'up':
-      return idx < cols ? done({ ...state, zone: 'chips' }) : at(idx - cols);
+      return idx <= 0 ? done({ ...state, zone: 'chips' }) : at(idx - 1);
     case 'down':
-      if (idx + cols < list.length) return at(idx + cols);
-      // Bottom of a column above an incomplete last line: drop onto the last tile.
-      return Math.floor(idx / cols) < Math.floor((list.length - 1) / cols)
-        ? at(list.length - 1)
-        : done(state);
+      return idx < list.length - 1 ? at(idx + 1) : done(state);
+    case 'left':
+    case 'right': {
+      // From the list, ← → switch the filter too; an empty one hands the focus to the chips.
+      const next = pick(filter + (action === 'left' ? -1 : 1));
+      const empty = ctx.tvChannels(next.tv.filter).length === 0;
+      return done({ ...next, zone: empty ? 'chips' : 'content' });
+    }
     case 'ok': {
       const channel = list[idx];
-      return channel === undefined ? done(state) : openPlayer(state, channel);
+      return channel === undefined ? done(state) : openPlayer(state, channel, list);
     }
     case 'back':
       return done(goTo(state, 'home'));
   }
+}
+
+/** First TV filter with channels, else the first one. */
+function firstFilled(ctx: NavContext): number {
+  for (let f = 0; f < ctx.tvFilterCount; f++) if (ctx.tvChannels(f).length > 0) return f;
+  return 0;
 }
 
 /** Index of the program airing at `time`, else the nearest one at the edges. */

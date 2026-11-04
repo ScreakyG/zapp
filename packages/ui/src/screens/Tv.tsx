@@ -1,12 +1,10 @@
 import { For, Show, createMemo, createSignal, onCleanup } from 'solid-js';
-import { FRENCH_BOUQUETS, toAction } from '@zapp/core';
+import { toAction } from '@zapp/core';
 import type { App } from '../app/createApp';
 import { pointerTo } from '../app/pointer';
 import { ChannelList } from '../components/ChannelList';
 import { TextEntry } from '../components/TextEntry';
 import './Tv.css';
-
-const BOUQUET_LABELS = new Map<string, string>(FRENCH_BOUQUETS.map((b) => [b.id, b.label]));
 
 /**
  * TV tab: themed chips (Mes chaînes, TNT, Sport…) applied as focus moves, then the channel
@@ -33,13 +31,6 @@ export function Tv(props: { app: App }) {
   const chipsFocused = () => nav().zone === 'chips';
   const favourites = () => props.app.tvFilters()[filter()]?.kind === 'favourites';
 
-  const tag = (index: number) => {
-    const c = props.app.channels()[index];
-    const bouquet = c?.bouquet && BOUQUET_LABELS.get(c.bouquet);
-    const label = props.app.tvFilters()[filter()]?.label ?? '';
-    return [label, c?.number, bouquet].filter(Boolean).join(' · ');
-  };
-
   return (
     <div class="tv">
       <ChannelList
@@ -48,7 +39,6 @@ export function Tv(props: { app: App }) {
         idx={nav().tv.idx}
         focused={nav().zone === 'content'}
         focusAt={(s, i) => ({ ...s, zone: 'content', tv: { filter: s.tv.filter, idx: i } })}
-        tag={tag}
         empty={
           favourites()
             ? {

@@ -31,8 +31,6 @@ export function ChannelList(props: {
   focused: boolean;
   /** Navigation state where position i has the focus (mouse). */
   focusAt: (state: NavState, i: number) => NavState;
-  /** Label over the preview, e.g. "Sport · 041 · Canal+". */
-  tag: (channel: number) => string;
   empty: { title: string; text: string };
 }) {
   const offset = createMemo(() =>
@@ -150,7 +148,6 @@ export function ChannelList(props: {
                 )}
               </Show>
               <div class="clist-preview-shade" />
-              <span class="clist-tag caption">{props.tag(current()!)}</span>
               <div class="clist-preview-info">
                 <div class="clist-preview-name">
                   <Show when={air()?.program?.live}>

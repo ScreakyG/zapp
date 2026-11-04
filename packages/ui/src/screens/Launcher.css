@@ -10,7 +10,7 @@
 
 .launcher-title {
   position: absolute;
-  top: 196px;
+  top: 400px;
   left: var(--space-safe);
   margin: 0;
   color: var(--ink-muted);
@@ -21,9 +21,10 @@
   color: var(--ink);
 }
 
+/* Bottom of the screen, like the tvOS dock; the space above is for a backdrop later. */
 .launcher-row {
   position: absolute;
-  top: 244px;
+  top: 440px;
   left: var(--space-safe);
   transition: transform var(--focus-duration) var(--focus-easing);
 }

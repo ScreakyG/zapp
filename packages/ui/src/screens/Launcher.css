@@ -64,6 +64,13 @@
   object-fit: contain;
 }
 
+/* Vector brand logo: sized by width (APP_BRANDS), height follows; never taller than the card. */
+.launcher-card-brand {
+  display: block;
+  max-height: 150px;
+  object-fit: contain;
+}
+
 .launcher-card-sheen,
 .launcher-card-edge {
   position: absolute;

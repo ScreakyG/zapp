@@ -1,6 +1,7 @@
 import { For, Show } from 'solid-js';
 import type { App } from '../app/createApp';
 import { pointerTo, replaceAt } from '../app/pointer';
+import { APP_BRANDS } from '../appBrands';
 import { imageUrl } from '../images';
 import './Launcher.css';
 
@@ -38,12 +39,30 @@ export function Launcher(props: { app: App }) {
               aria-label={`Ouvrir ${a.label}`}
             >
               <div class="launcher-card-lift">
-                <div class="launcher-card-media">
+                <div
+                  class="launcher-card-media"
+                  style={{ background: APP_BRANDS[a.id]?.background ?? 'var(--surface-raised)' }}
+                >
                   <Show
-                    when={imageUrl(a.logo)}
-                    fallback={<span class="launcher-card-name title">{a.label}</span>}
+                    when={APP_BRANDS[a.id]}
+                    fallback={
+                      // Unknown bouquet: the source's logo, else its name.
+                      <Show
+                        when={imageUrl(a.logo)}
+                        fallback={<span class="launcher-card-name title">{a.label}</span>}
+                      >
+                        {(src) => <img class="launcher-card-logo" src={src()} alt={a.label} />}
+                      </Show>
+                    }
                   >
-                    {(src) => <img class="launcher-card-logo" src={src()} alt={a.label} />}
+                    {(brand) => (
+                      <img
+                        class="launcher-card-brand"
+                        src={brand().logo}
+                        alt={a.label}
+                        style={{ width: `${Math.round(brand().width * 336)}px` }}
+                      />
+                    )}
                   </Show>
                   <div class="launcher-card-sheen" />
                   <div class="launcher-card-edge" />

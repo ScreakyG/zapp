@@ -45,6 +45,7 @@ const ctx: NavContext = {
   ],
   guidePrograms: (row) => GUIDE[row] ?? [],
   guideWindowStart: 0,
+  apps: [],
   tvFilterCount: TV.length,
   tvChannels: (f) => TV[f] ?? [],
 };
@@ -233,6 +234,47 @@ describe('tv', () => {
     expect(press(playing, 'down').player.channel).toBe(3);
     const back = press(playing, 'up', 'back');
     expect(back).toMatchObject({ screen: 'tv', zone: 'content', tv: { filter: 1, idx: 1 } });
+  });
+});
+
+describe('launcher', () => {
+  const apps: NavContext = { ...ctx, apps: [[1, 3], [4], []] };
+  const go = (s: NavState, ...actions: Parameters<typeof navigate>[1][]) =>
+    actions.reduce((x, a) => navigate(x, a, apps).state, s);
+  const home = initialNav(apps);
+
+  it('moves across the apps, ↑ to the Home tab', () => {
+    expect(go(home, 'right', 'right', 'right').home.cols[0]).toBe(2);
+    expect(go(home, 'left').home.cols[0]).toBe(0);
+    expect(go(home, 'down').home.row).toBe(0);
+    expect(go(home, 'up')).toMatchObject({ zone: 'menu', menuIdx: 0 });
+  });
+
+  it('OK opens the bouquet screen on its first channel, without the TabBar', () => {
+    const open = go(home, 'right', 'ok');
+    expect(open).toMatchObject({ screen: 'app', zone: 'content', app: { app: 1, idx: 0 } });
+    expect(go(home, 'ok', 'up')).toMatchObject({ screen: 'app', zone: 'back' });
+    expect(go(home, 'ok', 'up', 'up').zone).toBe('back');
+    expect(go(home, 'right', 'right', 'ok').zone).toBe('back');
+  });
+
+  it('‹ Accueil and Back return home on the same app', () => {
+    const open = go(home, 'right', 'ok');
+    for (const s of [go(open, 'back'), go(open, 'up', 'ok'), go(open, 'up', 'back')]) {
+      expect(s).toMatchObject({ screen: 'home', zone: 'content', home: { row: 0 } });
+      expect(s.home.cols[0]).toBe(1);
+    }
+  });
+
+  it('plays within the bouquet; Back from the player lands on the watched channel', () => {
+    const playing = go(home, 'ok', 'down', 'ok');
+    expect(playing).toMatchObject({
+      screen: 'player',
+      prevScreen: 'app',
+      player: { channel: 3, list: [1, 3] },
+    });
+    const back = go(playing, 'up', 'back');
+    expect(back).toMatchObject({ screen: 'app', zone: 'content', app: { app: 0, idx: 0 } });
   });
 });
 

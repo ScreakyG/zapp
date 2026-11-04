@@ -32,6 +32,8 @@ export function ChannelList(props: {
   /** Navigation state where position i has the focus (mouse). */
   focusAt: (state: NavState, i: number) => NavState;
   empty: { title: string; text: string };
+  /** Top of the list and preview, in stage pixels: under the chips (TV) or a header (app). */
+  top?: number;
 }) {
   const offset = createMemo(() =>
     Math.max(0, Math.min(props.idx - TV_LIST_LEAD, props.channels.length - TV_LIST_ROWS)),
@@ -76,6 +78,7 @@ export function ChannelList(props: {
   onCleanup(() => clearTimeout(timer));
   const live = () => shown() !== '' && playback.status().state === 'playing';
 
+  const top = () => props.top ?? 200;
   const favourite = (i: number) =>
     props.app.settings().favourites.includes(props.app.channels()[i]?.id ?? '');
 
@@ -84,7 +87,7 @@ export function ChannelList(props: {
       <img class="clist-glow" src={imageUrl(channel()?.image)} alt="" />
       <div class="clist-shade" />
 
-      <div class="clist-list">
+      <div class="clist-list" style={{ top: `${top()}px` }}>
         <div class="clist-track" style={{ transform: `translateY(${-offset() * ITEM_PITCH}px)` }}>
           <For each={visible()}>
             {(item) => {
@@ -130,7 +133,7 @@ export function ChannelList(props: {
         </Show>
       </div>
 
-      <div class="clist-preview">
+      <div class="clist-preview" style={{ top: `${top()}px` }}>
         <div class="clist-preview-live" classList={{ hidden: !live() }}>
           {video}
         </div>
@@ -177,7 +180,7 @@ export function ChannelList(props: {
         <div class="clist-preview-edge" />
       </div>
 
-      <div class="clist-next">
+      <div class="clist-next" style={{ top: `${top() + 448}px` }}>
         <div class="clist-next-text">
           <div class="caption muted">
             {air()?.next ? `Ensuite · ${formatTime(air()!.next!.start)}` : 'Ensuite'}

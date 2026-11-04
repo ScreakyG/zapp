@@ -10,6 +10,7 @@ import {
 } from 'solid-js';
 import {
   CATEGORIES,
+  CHANNEL_GROUPS,
   DemoSource,
   buildHomeRows,
   frenchLineup,
@@ -47,13 +48,34 @@ import {
 import { buildSource } from './sources';
 
 export const BANNER_DURATION = 4000;
-export const MOSAIC_COLUMNS = 4;
+/**
+ * A TV tab chip. `favourites`: Mes chaînes, in the order they were added; `group`: the themed
+ * groups of the France preset; `category`: the other sources' categories.
+ */
+export interface TvFilter {
+  id: string;
+  label: string;
+  kind: 'favourites' | 'all' | 'group' | 'category';
+}
 
-/** Mosaic chips: "Toutes" then one per category. */
-export const MOSAIC_FILTERS = [
-  { id: null, label: 'Toutes' },
-  ...CATEGORIES.map((c) => ({ id: c.id, label: c.label })),
+const FAVOURITES: TvFilter = { id: 'favourites', label: 'Mes chaînes', kind: 'favourites' };
+
+/** France preset: Mes chaînes, then the themed groups mixing the TNT and the bouquets. */
+export const GROUP_FILTERS: TvFilter[] = [
+  FAVOURITES,
+  ...CHANNEL_GROUPS.map((g) => ({ id: g.id, label: g.label, kind: 'group' as const })),
 ];
+
+/** Other sources: Mes chaînes, every channel, then one chip per category. */
+export const CATEGORY_FILTERS: TvFilter[] = [
+  FAVOURITES,
+  { id: 'all', label: 'Toutes', kind: 'all' },
+  ...CATEGORIES.map((c) => ({ id: c.id, label: c.label, kind: 'category' as const })),
+];
+
+/** List items visible at once on the TV screen; the focus scrolls the list past the 4th. */
+export const TV_LIST_ROWS = 8;
+export const TV_LIST_LEAD = 3;
 
 export interface HomeRowView {
   title: string;
@@ -79,8 +101,8 @@ function changed(a: NavState, b: NavState): boolean {
     a.home.cols[a.home.row] !== b.home.cols[b.home.row] ||
     a.guide.row !== b.guide.row ||
     a.guide.prog !== b.guide.prog ||
-    a.mosaic.filter !== b.mosaic.filter ||
-    a.mosaic.idx !== b.mosaic.idx
+    a.tv.filter !== b.tv.filter ||
+    a.tv.idx !== b.tv.idx
   );
 }
 
@@ -88,12 +110,12 @@ function changed(a: NavState, b: NavState): boolean {
 function scrolls(a: NavState, b: NavState): boolean {
   const homeCol = (s: NavState) => Math.max(0, (s.home.cols[s.home.row] ?? 0) - 2);
   const guideOffset = (s: NavState) => Math.max(0, s.guide.row - 3);
-  const mosaicRow = (s: NavState) => Math.floor(s.mosaic.idx / MOSAIC_COLUMNS);
+  const tvOffset = (s: NavState) => Math.max(0, s.tv.idx - TV_LIST_LEAD);
   return (
     a.home.row !== b.home.row ||
     homeCol(a) !== homeCol(b) ||
     guideOffset(a) !== guideOffset(b) ||
-    mosaicRow(a) !== mosaicRow(b)
+    tvOffset(a) !== tvOffset(b)
   );
 }
 
@@ -171,9 +193,7 @@ export function createApp(options: AppOptions = {}) {
   const [loading, setLoading] = createSignal(false);
 
   const [channels, setChannels] = createSignal<Channel[]>([]);
-  const [mosaicFilters, setMosaicFilters] =
-    createSignal<{ id: string | null; label: string }[]>(MOSAIC_FILTERS);
-  let bouquetMembers: Map<string, Set<string>> | undefined;
+  const [tvFilters, setTvFilters] = createSignal<TvFilter[]>(CATEGORY_FILTERS);
   const [searchQuery, setSearchQuery] = createSignal('');
   const searchable = (value: string) =>
     value
@@ -191,11 +211,21 @@ export function createApp(options: AppOptions = {}) {
   /** Programs per channel id around now (EPG cache comes with #15). */
   const [programs, setPrograms] = createSignal<Map<string, Program[]>>(new Map());
 
-  const mosaicChannels = (filter: number) => {
-    const id = mosaicFilters()[filter]?.id;
+  const channelIndex = createMemo(() => new Map(channels().map((c, i) => [c.id, i])));
+  const matches = (i: number) => searchTerms().every((term) => searchIndex()[i]!.includes(term));
+  /** Channels of a TV chip, as indices into the channel list, narrowed by the search. */
+  const tvChannels = (filter: number): number[] => {
+    const f = tvFilters()[filter];
+    if (!f) return [];
+    if (f.kind === 'favourites') {
+      return settings().favourites.flatMap((id) => {
+        const i = channelIndex().get(id);
+        return i !== undefined && matches(i) ? [i] : [];
+      });
+    }
     return channels().flatMap((c, i) =>
-      (!id || (bouquetMembers ? bouquetMembers.get(id)?.has(c.id) : c.category === id)) &&
-      searchTerms().every((term) => searchIndex()[i]!.includes(term))
+      (f.kind === 'all' || (f.kind === 'group' ? c.groups?.includes(f.id) : c.category === f.id)) &&
+      matches(i)
         ? [i]
         : [],
     );
@@ -219,9 +249,8 @@ export function createApp(options: AppOptions = {}) {
     homeRows: homeRows().map((r) => r.channels),
     guidePrograms: (row: number) => guideSpans()[row] ?? [],
     guideWindowStart: guideStart(),
-    mosaicFilterCount: mosaicFilters().length,
-    mosaicColumns: MOSAIC_COLUMNS,
-    mosaicChannels,
+    tvFilterCount: tvFilters().length,
+    tvChannels,
   }));
 
   const [nav, setNav] = createSignal<NavState>(initialNav(ctx()));
@@ -395,12 +424,7 @@ export function createApp(options: AppOptions = {}) {
         ]
       : source.homeRows?.();
     batch(() => {
-      bouquetMembers = bouquets && new Map(bouquets.map((b) => [b.id, new Set(b.channels)]));
-      setMosaicFilters(
-        bouquets
-          ? [{ id: null, label: 'Toutes' }, ...bouquets.map((b) => ({ id: b.id, label: b.label }))]
-          : MOSAIC_FILTERS,
-      );
+      setTvFilters(lineup ? GROUP_FILTERS : CATEGORY_FILTERS);
       setPrograms(new Map());
       setChannels(list);
       showRows(curated ?? buildHomeRows(list, () => false, favourites));
@@ -658,13 +682,13 @@ export function createApp(options: AppOptions = {}) {
     now: minute,
     banner,
     zap,
-    mosaicChannels,
-    mosaicFilters,
+    tvChannels,
+    tvFilters,
     searchQuery,
     search: (query: string) =>
       batch(() => {
         setSearchQuery(query);
-        setNav((s) => ({ ...s, mosaic: { ...s.mosaic, idx: 0 } }));
+        setNav((s) => ({ ...s, tv: { ...s.tv, idx: 0 } }));
       }),
   };
 }

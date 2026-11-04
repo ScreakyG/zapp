@@ -5,7 +5,7 @@ import { pointerTo } from './app/pointer';
 import { TabBar } from './components/TabBar';
 import { Guide } from './screens/Guide';
 import { Home } from './screens/Home';
-import { Mosaic } from './screens/Mosaic';
+import { Tv } from './screens/Tv';
 import { Player } from './screens/Player';
 import { Settings } from './screens/Settings';
 import './App.css';
@@ -23,8 +23,8 @@ export function App() {
         <Match when={nav().screen === 'guide'}>
           <Guide app={app} />
         </Match>
-        <Match when={nav().screen === 'mosaic'}>
-          <Mosaic app={app} />
+        <Match when={nav().screen === 'tv'}>
+          <Tv app={app} />
         </Match>
         <Match when={nav().screen === 'settings'}>
           <Settings app={app} />

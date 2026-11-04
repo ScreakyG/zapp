@@ -33,7 +33,7 @@ const GUIDE = [
   ],
   [],
 ];
-const MOSAIC = [[0, 1, 2, 3, 4], [1, 3], []];
+const TV = [[0, 1, 2, 3, 4], [1, 3], []];
 
 const ctx: NavContext = {
   now: 52,
@@ -45,9 +45,8 @@ const ctx: NavContext = {
   ],
   guidePrograms: (row) => GUIDE[row] ?? [],
   guideWindowStart: 0,
-  mosaicFilterCount: MOSAIC.length,
-  mosaicColumns: 2,
-  mosaicChannels: (f) => MOSAIC[f] ?? [],
+  tvFilterCount: TV.length,
+  tvChannels: (f) => TV[f] ?? [],
 };
 
 function press(state: NavState, ...actions: Parameters<typeof navigate>[1][]): NavState {
@@ -89,13 +88,17 @@ describe('menu', () => {
       prevScreen: 'home',
       zone: 'content',
     });
-    expect(press(start, 'up', 'right', 'ok')).toMatchObject({ screen: 'guide', zone: 'content' });
+    expect(press(start, 'up', 'right', 'ok')).toMatchObject({ screen: 'tv', zone: 'content' });
+    expect(press(start, 'up', 'right', 'right', 'ok')).toMatchObject({
+      screen: 'guide',
+      zone: 'content',
+    });
   });
 
-  it('comes back down to the content, or to the chips on the mosaic', () => {
+  it('comes back down to the content, or to the search on TV', () => {
     expect(press(start, 'up', 'down').zone).toBe('content');
-    // Entering the mosaic focuses the grid; ↑ chips, ↑ tab, ↓ back to the chips.
-    expect(press(start, 'up', 'right', 'right', 'ok', 'up', 'up', 'down').zone).toBe('chips');
+    // Entering TV focuses the list; ↑ chips, ↑ search, ↑ tab, ↓ back to the search.
+    expect(press(start, 'up', 'right', 'ok', 'up', 'up', 'up', 'down').zone).toBe('search');
   });
 
   it('Back from a tab returns home', () => {
@@ -109,12 +112,12 @@ describe('guide', () => {
 
   it('entering from the tab lands on the program at the targeted time', () => {
     // Initial state was built before programs loaded: prog 0 is stale, time is now (52).
-    const stale = on({ zone: 'menu', menuIdx: 1, guide: { row: 2, prog: 0, time: 52 } });
+    const stale = on({ zone: 'menu', menuIdx: 2, guide: { row: 2, prog: 0, time: 52 } });
     expect(press(stale, 'ok').guide).toEqual({ row: 2, prog: 1, time: 52 });
   });
 
   it('a target behind the window start falls back to now', () => {
-    const old = on({ zone: 'menu', menuIdx: 1, guide: { row: 0, prog: 0, time: -500 } });
+    const old = on({ zone: 'menu', menuIdx: 2, guide: { row: 0, prog: 0, time: -500 } });
     expect(press(old, 'ok').guide).toEqual({ row: 0, prog: 1, time: 52 });
   });
 
@@ -150,7 +153,7 @@ describe('guide', () => {
   });
 
   it('↑ from the first row goes to the Guide tab; ↓ stops at the last row', () => {
-    expect(press(g(0, 1), 'up')).toMatchObject({ zone: 'menu', menuIdx: 1 });
+    expect(press(g(0, 1), 'up')).toMatchObject({ zone: 'menu', menuIdx: 2 });
     expect(press(g(4, 0), 'down').guide.row).toBe(4);
   });
 
@@ -167,56 +170,77 @@ describe('guide', () => {
   });
 });
 
-describe('mosaic', () => {
-  const m = (filter: number, idx: number, zone: NavState['zone'] = 'content'): NavState =>
-    on({ screen: 'mosaic', zone, mosaic: { filter, idx } });
+describe('tv', () => {
+  const t = (filter: number, idx: number, zone: NavState['zone'] = 'content'): NavState =>
+    on({ screen: 'tv', zone, tv: { filter, idx } });
 
-  it('applies filters on ← → and resets to the first tile', () => {
-    expect(press(m(0, 3, 'chips'), 'right').mosaic).toEqual({ filter: 1, idx: 0 });
-    expect(press(m(0, 0, 'chips'), 'left').mosaic.filter).toBe(0);
+  it('opens on the first filter that has channels', () => {
+    const favouritesEmpty: NavContext = { ...ctx, tvChannels: (f) => [[], [1, 3]][f] ?? [] };
+    expect(initialNav(favouritesEmpty).tv).toEqual({ filter: 1, idx: 0 });
+    expect(start.tv).toEqual({ filter: 0, idx: 0 });
   });
 
-  it('moves in a 2-column grid', () => {
-    expect(press(m(0, 0), 'right').mosaic.idx).toBe(1);
-    expect(press(m(0, 1), 'right').mosaic.idx).toBe(1);
-    expect(press(m(0, 1), 'down').mosaic.idx).toBe(3);
-    expect(press(m(0, 3), 'left').mosaic.idx).toBe(2);
-  });
-
-  it('↓ above an incomplete last line drops onto the last tile', () => {
-    expect(press(m(0, 3), 'down').mosaic.idx).toBe(4);
-    expect(press(m(0, 4), 'down').mosaic.idx).toBe(4);
-  });
-
-  it('↑ from the first line goes to the chips, then to the Mosaic tab', () => {
-    expect(press(m(0, 1), 'up').zone).toBe('chips');
-    expect(press(m(0, 0, 'chips'), 'up').zone).toBe('search');
-    expect(press(m(0, 0, 'chips'), 'up', 'up')).toMatchObject({ zone: 'menu', menuIdx: 2 });
-    expect(press(m(0, 0, 'chips'), 'up', 'up', 'down').zone).toBe('search');
-  });
-
-  it('cannot enter an empty grid', () => {
-    expect(press(m(2, 0, 'chips'), 'down').zone).toBe('chips');
-  });
-
-  it('opens the focused channel', () => {
-    expect(press(m(1, 1), 'ok')).toMatchObject({
-      screen: 'player',
-      prevScreen: 'mosaic',
-      player: { channel: 3 },
+  it('the TV tab opens on a filled filter when the remembered one is empty', () => {
+    const favouritesEmpty: NavContext = { ...ctx, tvChannels: (f) => [[], [1, 3]][f] ?? [] };
+    const s = on({ zone: 'menu', menuIdx: 1, tv: { filter: 0, idx: 0 } });
+    expect(navigate(s, 'ok', favouritesEmpty).state).toMatchObject({
+      screen: 'tv',
+      zone: 'content',
+      tv: { filter: 1, idx: 0 },
     });
   });
 
-  it('OK on the chips enters the grid', () => {
-    expect(press(m(0, 0, 'chips'), 'ok').zone).toBe('content');
+  it('applies filters on ← → from the chips and restarts the list', () => {
+    expect(press(t(0, 3, 'chips'), 'right').tv).toEqual({ filter: 1, idx: 0 });
+    expect(press(t(0, 0, 'chips'), 'left').tv.filter).toBe(0);
+  });
+
+  it('moves in the list, ↓ stopping at its end', () => {
+    expect(press(t(0, 0), 'down', 'down').tv.idx).toBe(2);
+    expect(press(t(0, 4), 'down').tv.idx).toBe(4);
+    expect(press(t(0, 2), 'up').tv.idx).toBe(1);
+  });
+
+  it('← → from the list switch the filter, handing the focus to the chips when empty', () => {
+    expect(press(t(0, 3), 'right')).toMatchObject({ zone: 'content', tv: { filter: 1, idx: 0 } });
+    expect(press(t(1, 1), 'right')).toMatchObject({ zone: 'chips', tv: { filter: 2, idx: 0 } });
+    expect(press(t(0, 3), 'left')).toMatchObject({ zone: 'content', tv: { filter: 0, idx: 3 } });
+  });
+
+  it('↑ from the top goes to the chips, the search, then the TV tab', () => {
+    expect(press(t(0, 0), 'up').zone).toBe('chips');
+    expect(press(t(0, 0, 'chips'), 'up').zone).toBe('search');
+    expect(press(t(0, 0, 'chips'), 'up', 'up')).toMatchObject({ zone: 'menu', menuIdx: 1 });
+  });
+
+  it('cannot enter an empty list; OK on the chips enters it', () => {
+    expect(press(t(2, 0, 'chips'), 'down').zone).toBe('chips');
+    expect(press(t(0, 0, 'chips'), 'ok').zone).toBe('content');
+  });
+
+  it('opens the focused channel, zapping within the filter', () => {
+    expect(press(t(1, 1), 'ok')).toMatchObject({
+      screen: 'player',
+      prevScreen: 'tv',
+      player: { channel: 3, list: [1, 3] },
+    });
+  });
+
+  it('↑ ↓ in the player zap within the filter; Back lands on the watched channel', () => {
+    const playing = press(t(1, 0), 'ok');
+    expect(press(playing, 'up').player.channel).toBe(3);
+    expect(press(playing, 'up', 'up').player.channel).toBe(1);
+    expect(press(playing, 'down').player.channel).toBe(3);
+    const back = press(playing, 'up', 'back');
+    expect(back).toMatchObject({ screen: 'tv', zone: 'content', tv: { filter: 1, idx: 1 } });
   });
 });
 
 describe('Back', () => {
-  it('returns home from the guide, the mosaic grid and the chips', () => {
+  it('returns home from the guide, the TV list and the chips', () => {
     expect(press(on({ screen: 'guide' }), 'back').screen).toBe('home');
-    expect(press(on({ screen: 'mosaic' }), 'back').screen).toBe('home');
-    expect(press(on({ screen: 'mosaic', zone: 'chips' }), 'back').screen).toBe('home');
+    expect(press(on({ screen: 'tv' }), 'back').screen).toBe('home');
+    expect(press(on({ screen: 'tv', zone: 'chips' }), 'back').screen).toBe('home');
   });
 
   it('does nothing on home content', () => {
@@ -225,8 +249,8 @@ describe('Back', () => {
 });
 
 describe('player', () => {
-  const p = (channel: number): NavState =>
-    on({ screen: 'player', prevScreen: 'home', player: { channel } });
+  const p = (channel: number, list: number[] | null = null): NavState =>
+    on({ screen: 'player', prevScreen: 'home', player: { channel, list } });
 
   it('↑ next and ↓ previous channel, looping, and retunes', () => {
     expect(press(p(4), 'up').player.channel).toBe(0);
@@ -235,6 +259,25 @@ describe('player', () => {
       { type: 'tune', channel: 2 },
       { type: 'showBanner' },
     ]);
+  });
+
+  it('zaps within the list it was opened from, looping', () => {
+    expect(press(p(0, [2, 3, 0]), 'up').player).toEqual({ channel: 2, list: [2, 3, 0] });
+    expect(press(p(2, [2, 3, 0]), 'down').player.channel).toBe(0);
+  });
+
+  it('a channel outside its list zaps through every channel', () => {
+    expect(press(p(1, [2, 3]), 'up').player).toEqual({ channel: 2, list: null });
+  });
+
+  it('home rows set the zap list; the guide zaps through every channel', () => {
+    expect(press(start, 'ok').player).toEqual({ channel: 2, list: [2, 3, 0] });
+    expect(press(on({ screen: 'guide' }), 'ok').player.list).toBeNull();
+  });
+
+  it('number zapping keeps the list when it holds the channel', () => {
+    expect(openPlayer(p(2, [2, 3, 0]), 3).state.player.list).toEqual([2, 3, 0]);
+    expect(openPlayer(p(2, [2, 3, 0]), 1).state.player.list).toBeNull();
   });
 
   it('← → OK only show the banner', () => {
@@ -251,7 +294,10 @@ describe('player', () => {
   });
 
   it('openPlayer from the player keeps the original origin', () => {
-    expect(openPlayer(p(1), 3).state).toMatchObject({ prevScreen: 'home', player: { channel: 3 } });
+    expect(openPlayer(p(1), 3).state).toMatchObject({
+      prevScreen: 'home',
+      player: { channel: 3, list: null },
+    });
   });
 });
 
@@ -284,24 +330,22 @@ describe('settings', () => {
 describe('normalize', () => {
   it('clamps indices left stale by shrunk content', () => {
     const stale = on({
-      screen: 'mosaic',
+      screen: 'tv',
       home: { row: 9, cols: [7, 7, 7] },
-      mosaic: { filter: 1, idx: 5 },
+      tv: { filter: 1, idx: 5 },
       guide: { row: 9, prog: 9, time: 52 },
-      player: { channel: 99 },
+      player: { channel: 99, list: [1, 7] },
     });
     expect(normalize(stale, ctx)).toMatchObject({
       home: { row: 2, cols: [2, 1, 4] },
-      mosaic: { filter: 1, idx: 1 },
+      tv: { filter: 1, idx: 1 },
       guide: { row: 4, prog: 0 },
-      player: { channel: 4 },
+      player: { channel: 4, list: [1] },
     });
   });
 
-  it('moves focus out of a grid that became empty', () => {
-    expect(normalize(on({ screen: 'mosaic', mosaic: { filter: 2, idx: 0 } }), ctx).zone).toBe(
-      'chips',
-    );
+  it('moves focus out of a list that became empty', () => {
+    expect(normalize(on({ screen: 'tv', tv: { filter: 2, idx: 0 } }), ctx).zone).toBe('chips');
   });
 
   it('lets OK act on a clamped home column', () => {
@@ -314,7 +358,7 @@ describe('normalize', () => {
       ...ctx,
       channelCount: 0,
       homeRows: [],
-      mosaicChannels: () => [],
+      tvChannels: () => [],
     };
     const s = initialNav(empty);
     expect(navigate(s, 'down', empty).state.home.row).toBe(0);

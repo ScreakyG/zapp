@@ -15,7 +15,7 @@ export interface ChannelTileProps {
   focused: boolean;
 }
 
-/** A channel as a 16:9 tile (design/components/ChannelTile.md), on Home and in the Mosaic. */
+/** A channel as a 16:9 tile (design/components/ChannelTile.md), on Home. */
 export function ChannelTile(props: ChannelTileProps) {
   return (
     <div class="tile" classList={{ focused: props.focused }}>

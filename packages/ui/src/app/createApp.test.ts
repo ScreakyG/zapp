@@ -53,6 +53,14 @@ function controlledSource(list: Channel[]) {
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+const GROUPS = ['favourites', 'tnt', 'sport', 'cinema', 'info', 'docs'];
+
+/** Channels of the TV chip `id`. */
+const chip = (
+  app: { tvFilters(): { id: string }[]; tvChannels(f: number): number[] },
+  id: string,
+) => app.tvChannels(app.tvFilters().findIndex((f) => f.id === id));
+
 function start(settings: Partial<Settings>, sources: Source[]) {
   let i = 0;
   return createRoot((dispose) => ({
@@ -67,7 +75,7 @@ function start(settings: Partial<Settings>, sources: Source[]) {
 }
 
 describe('createApp', () => {
-  it('includes only selected DAZN RAW channels on home, guide and mosaic, excluding PPV', async () => {
+  it('includes only selected DAZN RAW channels on home, guide and TV, excluding PPV', async () => {
     const raw = { ...channel('FR: DAZN 1 ᴿᴬᵂ', '19472'), group: 'FR| DAZN LA LIGA PPV' };
     const ppv = {
       ...channel('NO EVENT STREAMING NOW - | 8K EXCLUSIVE | FR: DAZN PPV 1', '19372'),
@@ -85,14 +93,15 @@ describe('createApp', () => {
       ]);
       expect(app.homeRows()).toEqual([{ title: 'DAZN', channels: [0] }]);
       expect(app.guideRows()).toHaveLength(1);
-      expect(app.mosaicFilters().map((f) => f.id)).toEqual([null, 'dazn']);
-      expect(app.mosaicChannels(1)).toEqual([0]);
+      expect(app.tvFilters().map((f) => f.id)).toEqual(GROUPS);
+      expect(chip(app, 'sport')).toEqual([0]);
+      expect(chip(app, 'tnt')).toEqual([]);
     } finally {
       dispose();
     }
   });
 
-  it('shows separate deduplicated RMC bouquets on home, mosaic and guide', async () => {
+  it('shows separate deduplicated RMC bouquets on home, TV and guide', async () => {
     const sport = channel('VIP: RMC Sport 1 ᴿᴬᵂ', '18336');
     const story = channel('FR: RMC Story RAW', '102');
     const source: Source = {
@@ -117,15 +126,14 @@ describe('createApp', () => {
         { title: 'RMC Sport', channels: [1] },
         { title: 'RMC', channels: [0] },
       ]);
-      expect(app.mosaicFilters().map((f) => f.id)).toEqual([null, 'rmc-sport', 'rmc']);
-      expect(app.mosaicChannels(1)).toEqual([1]);
-      expect(app.mosaicChannels(2)).toEqual([0]);
+      expect(chip(app, 'sport')).toEqual([1]);
+      expect(chip(app, 'docs')).toEqual([0]);
     } finally {
       dispose();
     }
   });
 
-  it('shows provider Ligue 1+ superscript RAW channels on home and mosaic', async () => {
+  it('shows provider Ligue 1+ superscript RAW channels on home and in the Sport group', async () => {
     const expected = Array.from({ length: 10 }, (_, i) => ({
       ...channel(`VIP: LIGUE 1+ ${i + 1} ᴿᴬᵂ`, String(18307 + i)),
       id: `xtream:${1686911 - i}`,
@@ -139,17 +147,16 @@ describe('createApp', () => {
     try {
       await flush();
       expect(app.homeRows().find((r) => r.title === 'Ligue 1+')?.channels).toHaveLength(10);
-      const filter = app.mosaicFilters().findIndex((f) => f.id === 'ligue1');
-      expect(filter).toBeGreaterThan(0);
-      expect(app.mosaicChannels(filter).map((i) => app.channels()[i]?.id)).toEqual(
+      expect(chip(app, 'sport').map((i) => app.channels()[i]?.id)).toEqual(
         expected.map((c) => c.id),
       );
+      expect(chip(app, 'tnt')).toEqual([0]);
     } finally {
       dispose();
     }
   });
 
-  it('applies a candidate France preset to home, guide and mosaic, then restores the catalogue', async () => {
+  it('applies a candidate France preset to home, guide and TV, then restores the catalogue', async () => {
     const list = [
       channel('FR | TF1 HD', '001'),
       channel('FR | Canal+ Sport UHD', '002'),
@@ -190,21 +197,20 @@ describe('createApp', () => {
         'RMC Sport',
       ]);
       expect(app.homeRows()[0]?.channels).toEqual([3]);
-      expect(app.mosaicFilters().map((f) => f.id)).toEqual([
-        null,
-        'tnt',
-        'canal',
-        'ligue1',
-        'bein',
-        'rmc-sport',
-      ]);
-      expect(app.mosaicChannels(4)).toEqual([3]);
+      expect(app.tvFilters().map((f) => f.id)).toEqual(GROUPS);
+      expect(chip(app, 'favourites')).toEqual([3]);
+      expect(chip(app, 'sport')).toEqual([1, 2, 3, 4]);
       app.search('sport');
-      expect(app.mosaicChannels(2)).toEqual([1]);
-      expect(app.mosaicChannels(1)).toEqual([]);
+      expect(chip(app, 'sport')).toEqual([1, 3, 4]);
+      expect(chip(app, 'tnt')).toEqual([]);
       await app.reload();
       expect(app.channels()).toEqual(list);
-      expect(app.mosaicFilters()[1]?.id).toBe('sport');
+      expect(
+        app
+          .tvFilters()
+          .map((f) => f.id)
+          .slice(0, 3),
+      ).toEqual(['favourites', 'all', 'sport']);
     } finally {
       dispose();
     }
@@ -226,7 +232,7 @@ describe('createApp', () => {
       ).toBe(false);
       expect(app.channels()[0]?.id).toBe('Unknown');
       expect(app.loadError()).toContain('Aucune chaîne reconnue');
-      expect(app.mosaicFilters()[1]?.id).toBe('sport');
+      expect(app.tvFilters()[2]?.id).toBe('sport');
     } finally {
       dispose();
     }
@@ -244,28 +250,28 @@ describe('createApp', () => {
       await flush();
       app.point((s) => ({
         ...s,
-        screen: 'mosaic',
+        screen: 'tv',
         zone: 'content',
-        mosaic: { filter: 0, idx: 2 },
+        tv: { filter: 1, idx: 2 },
       }));
       app.search('  SPORT evenements  ');
-      expect(app.mosaicChannels(0)).toEqual([1]);
-      expect(app.mosaicChannels(1)).toEqual([1]);
-      expect(app.mosaicChannels(2)).toEqual([]);
-      expect(app.nav().mosaic.idx).toBe(0);
+      expect(app.tvChannels(1)).toEqual([1]);
+      expect(app.tvChannels(2)).toEqual([1]);
+      expect(app.tvChannels(3)).toEqual([]);
+      expect(app.nav().tv.idx).toBe(0);
       app.press('ok');
       expect(app.nav()).toMatchObject({ screen: 'player', player: { channel: 1 } });
       app.press('back');
       expect(app.searchQuery()).toBe('  SPORT evenements  ');
       app.search('042');
-      expect(app.mosaicChannels(0)).toEqual([1]);
+      expect(app.tvChannels(1)).toEqual([1]);
       app.search('introuvable');
-      expect(app.mosaicChannels(0)).toEqual([]);
+      expect(app.tvChannels(1)).toEqual([]);
       expect(app.nav().zone).toBe('chips');
       app.press('ok');
-      expect(app.nav().screen).toBe('mosaic');
+      expect(app.nav().screen).toBe('tv');
       app.search('   ');
-      expect(app.mosaicChannels(0)).toEqual([0, 1, 2]);
+      expect(app.tvChannels(1)).toEqual([0, 1, 2]);
     } finally {
       dispose();
     }
@@ -363,7 +369,7 @@ describe('createApp', () => {
     const release = app.captureKeys(() => false);
     app.point((s) => ({ ...s, zone: 'menu', menuIdx: 1 }), { click: true });
     app.press('ok');
-    expect(app.nav().screen).toBe('guide');
+    expect(app.nav().screen).toBe('tv');
     // A modal entry blocks the pointer underneath.
     const modal = app.captureKeys(() => true, { modal: true });
     app.point((s) => ({ ...s, zone: 'menu', menuIdx: 2 }), { click: true });

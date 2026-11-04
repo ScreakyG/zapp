@@ -131,9 +131,8 @@ describe('startZapping', () => {
     homeRows: [[0, 1]],
     guidePrograms: () => [],
     guideWindowStart: 0,
-    mosaicFilterCount: 1,
-    mosaicColumns: 4,
-    mosaicChannels: () => [0, 1],
+    tvFilterCount: 1,
+    tvChannels: () => [0, 1],
   };
 
   it('opens the player from any screen with the banner, without retuning', () => {
@@ -147,9 +146,9 @@ describe('startZapping', () => {
     const playing = {
       ...initialNav(ctx),
       screen: 'player' as const,
-      prevScreen: 'mosaic' as const,
+      prevScreen: 'tv' as const,
     };
-    expect(startZapping(playing).state.prevScreen).toBe('mosaic');
+    expect(startZapping(playing).state.prevScreen).toBe('tv');
   });
 
   it('works from the menu zone and from settings, which keeps its own return', () => {
